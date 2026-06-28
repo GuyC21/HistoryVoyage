@@ -1,3 +1,6 @@
+.agents
+.agents/
+
 # Django
 *.pyc
 __pycache__/
