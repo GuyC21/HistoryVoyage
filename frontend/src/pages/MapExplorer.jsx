@@ -11,7 +11,7 @@ const MIN_ZOOM_GATE = 7
 
 export default function MapExplorer() {
   const [bounds, setBounds] = useState(null)
-  const [zoom, setZoom] = useState(6)
+  const [zoom, setZoom] = useState(7)
   const [sites, setSites] = useState([])
   const [filteredSites, setFilteredSites] = useState([])
   
@@ -274,7 +274,7 @@ export default function MapExplorer() {
       <main className="map-wrapper">
         <MapContainer
           center={[38.5, 20.0]} // Centered on Mediterranean
-          zoom={6}
+          zoom={7}
           minZoom={5}
           maxZoom={18}
           className="map-element"
