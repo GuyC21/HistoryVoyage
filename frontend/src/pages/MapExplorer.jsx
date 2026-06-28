@@ -115,7 +115,7 @@ export default function MapExplorer() {
 
     try {
       const response = await fetch(
-        `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${siteDetails.wikidata}&props=labels|descriptions&languages=en&format=json&origin=*`,
+        `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${siteDetails.wikidata}&props=labels|descriptions|claims&languages=en&format=json&origin=*`,
         { signal: controller.signal }
       )
       if (!response.ok) {
@@ -127,6 +127,13 @@ export default function MapExplorer() {
       const englishName = entity?.labels?.en?.value || null
       const englishDescription = entity?.descriptions?.en?.value || null
 
+      // Extract image file name from P18 claim if present
+      let imageUrl = null
+      if (entity?.claims?.P18?.[0]?.mainsnak?.datavalue?.value) {
+        const imageName = entity.claims.P18[0].mainsnak.datavalue.value
+        imageUrl = `https://commons.wikimedia.org/w/index.php?title=Special:FilePath/${encodeURIComponent(imageName)}&width=600`
+      }
+
       setSelectedSite((prev) => {
         // Only update state if the user hasn't switched to a different marker in the meantime
         if (prev && prev.id === siteDetails.id) {
@@ -134,6 +141,7 @@ export default function MapExplorer() {
             ...prev,
             englishName: englishName,
             englishDescription: englishDescription,
+            imageUrl: imageUrl,
             hasTranslationAttempted: true
           }
         }

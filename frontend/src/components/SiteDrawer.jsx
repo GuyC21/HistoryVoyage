@@ -67,6 +67,7 @@ export default function SiteDrawer({
 
       {isLoading ? (
         <div className="drawer-content-loading">
+          <div className="skeleton skeleton-image"></div>
           <div className="skeleton skeleton-tag"></div>
           <div className="skeleton skeleton-title"></div>
           <div className="skeleton skeleton-text" style={{ width: '90%' }}></div>
@@ -77,6 +78,16 @@ export default function SiteDrawer({
         </div>
       ) : site ? (
         <>
+          {site.imageUrl && (
+            <div className="drawer-image-container">
+              <img 
+                src={site.imageUrl} 
+                alt={displayName} 
+                className="drawer-image"
+                loading="lazy"
+              />
+            </div>
+          )}
           <div className="drawer-header">
             <span className="drawer-tag">
               {category.emoji} {category.label}
