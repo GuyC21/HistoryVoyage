@@ -36,13 +36,48 @@ def is_historical_museum(name, tags):
     return any(keyword in name_lower for keyword in keywords)
 
 
+def is_jewish_israeli_heritage(name, tags):
+    # Explicit OSM tagging checks
+    religion = tags.get('religion', '').lower()
+    historic = tags.get('historic', '').lower()
+    heritage = tags.get('heritage', '').lower()
+    
+    if religion == 'jewish' or historic == 'synagogue' or 'synagogue' in tags.get('amenity', ''):
+        return True
+        
+    # Check names and descriptions for Jewish/Israeli keywords
+    keywords = [
+        # English
+        'synagogue', 'jewish', 'israelite', 'tomb of joseph', 'tomb of rachel', 
+        'patriarchs', 'cave of machpelah', 'shiloh', 'susya', 'herodion', 'qumran',
+        'gerizim', 'samaria', 'jericho',
+        # Hebrew
+        'בית כנסת', 'יהודי', 'קבר', 'שילה', 'סוסיא', 'הרודיון', 'מערת המכפלה',
+        'קומראן', 'גריזים', 'שומרון', 'יריחו', 'מכפלה', 'רחל', 'יוסף'
+    ]
+    
+    name_lower = name.lower()
+    description = (tags.get('description') or tags.get('note') or tags.get('comment') or '').lower()
+    
+    for kw in keywords:
+        if kw in name_lower or kw in description:
+            return True
+            
+    # Include amenity place of worship if marked with religion=jewish
+    if tags.get('amenity') == 'place_of_worship' and religion == 'jewish':
+        return True
+        
+    return False
+
+
 class Command(BaseCommand):
     help = 'Harvest historical and holy sites from OpenStreetMap (via Overpass API) and seed the database'
 
     def handle(self, *args, **options):
-        # Target countries in specified order: Israel, Greece, Italy
+        # Target countries in specified order: Israel, West Bank, Greece, Italy
         countries = [
             {'name': 'Israel', 'code': 'IL'},
+            {'name': 'West Bank', 'code': 'PS', 'is_west_bank': True},
             {'name': 'Greece', 'code': 'GR'},
             {'name': 'Italy', 'code': 'IT'},
         ]
@@ -50,7 +85,8 @@ class Command(BaseCommand):
         overpass_url = 'https://overpass-api.de/api/interpreter'
 
         for country in countries:
-            self.stdout.write(self.style.WARNING(f"\n---> Starting harvest for {country['name']}..."))
+            db_country_name = 'Israel' if country.get('is_west_bank') else country['name']
+            self.stdout.write(self.style.WARNING(f"\n---> Starting harvest for {country['name']} (saving to country: {db_country_name})..."))
             
             # Construct the Overpass QL query
             # We filter for nodes and ways with a name tag in the search area
@@ -119,7 +155,7 @@ class Command(BaseCommand):
 
                 # Fetch existing sites for this country to build an in-memory lookup cache
                 self.stdout.write("Fetching existing sites from database for in-memory deduplication...")
-                existing_sites = HistoricalSite.objects.filter(country=country['name'])
+                existing_sites = HistoricalSite.objects.filter(country=db_country_name)
                 
                 lookup = {}
                 for s in existing_sites:
@@ -145,6 +181,9 @@ class Command(BaseCommand):
                     tags = el.get('tags', {})
                     name = tags.get('name')
                     if not name:
+                        continue
+
+                    if country.get('is_west_bank') and not is_jewish_israeli_heritage(name, tags):
                         continue
 
                     # Filter out modern museums (e.g. art galleries, science centers)
@@ -210,7 +249,7 @@ class Command(BaseCommand):
                         location = Point(float(lon), float(lat), srid=4326)
                         to_create.append(HistoricalSite(
                             name=name,
-                            country=country['name'],
+                            country=db_country_name,
                             site_type=site_type,
                             location=location,
                             wikidata=wikidata,
