@@ -2,7 +2,14 @@ import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { TileLayer, Marker, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 
-// Helper to construct custom SVG icons depending on the site type and selection state
+/**
+ * getMarkerIcon Helper
+ * Generates custom Leaflet DivIcons containing category-specific SVGs, colors, and pulsing selection glow effects.
+ *
+ * @param {string} siteType - Category name (e.g. 'castle', 'ruins', 'holy_site', 'monument', 'archaeological').
+ * @param {boolean} isSelected - Whether the marker pin is currently selected.
+ * @returns {L.DivIcon} Leaflet DivIcon instance.
+ */
 const getMarkerIcon = (siteType, isSelected) => {
   let color = 'var(--color-other)'
   let iconSvg = ''
@@ -46,7 +53,16 @@ const getMarkerIcon = (siteType, isSelected) => {
   })
 }
 
-// Inner component to handle map events and report bounds/zoom back to parent
+/**
+ * MapEventsHandler Subcomponent
+ * Listens to Leaflet viewport move/zoom events, debounces query bounding-box changes,
+ * and forces Leaflet size re-evaluations to resolve gray screen container size bugs.
+ *
+ * @param {Object} props
+ * @param {Function} props.onBoundsChange - Callback with string bounding-box: "west,south,east,north" | null.
+ * @param {Function} props.onZoomChange - Callback with current zoom number.
+ * @param {number} props.minZoomGate - Minimum zoom gate under which database querying is disabled.
+ */
 function MapEventsHandler({ onBoundsChange, onZoomChange, minZoomGate }) {
   const debounceTimer = useRef(null)
 
@@ -107,6 +123,19 @@ function MapEventsHandler({ onBoundsChange, onZoomChange, minZoomGate }) {
   return null
 }
 
+/**
+ * MapView Component
+ * Renders the reactive Leaflet layers (basemap tile layers, dynamic markers, OS dark theme handlers, and viewport bounds).
+ *
+ * @param {Object} props
+ * @param {Array<Object>} props.sites - List of GeoJSON historical sites to map.
+ * @param {Object|null} props.selectedSite - The currently highlighted/active site properties.
+ * @param {Function} props.onSiteClick - Callback triggered when clicking a site marker.
+ * @param {Function} props.onBoundsChange - Callback indicating map bounding box shifts.
+ * @param {Function} props.onZoomChange - Callback indicating viewport zoom changes.
+ * @param {number} props.currentZoom - Current map viewport zoom level.
+ * @param {number} props.minZoomGate - Zoom limit gate beneath which markers are hidden.
+ */
 export default function MapView({ 
   sites, 
   selectedSite, 

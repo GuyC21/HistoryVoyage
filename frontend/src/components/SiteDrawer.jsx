@@ -1,5 +1,19 @@
 import React from 'react'
 
+/**
+ * SiteDrawer Component
+ * Renders the sliding details panel for the currently selected historical site.
+ * Displays site category badges, localized names, descriptions, Wikimedia cover images,
+ * and external explore links. Includes an internal scroll wrapper to prevent viewport overflow.
+ *
+ * @param {Object} props
+ * @param {Object|null} props.site - Selected site properties.
+ * @param {boolean} props.isOpen - Controls drawer visibility state.
+ * @param {Function} props.onClose - Callback triggered when closing the drawer.
+ * @param {boolean} props.isLoading - Controls loader skeleton animations.
+ * @param {string} props.languageMode - Interface language preference ('en' or 'local').
+ * @param {Function} props.setLanguageMode - Callback to update the language preference.
+ */
 export default function SiteDrawer({ 
   site, 
   isOpen, 

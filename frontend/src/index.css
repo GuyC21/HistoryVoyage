@@ -663,3 +663,84 @@ html, body, #root {
   text-transform: uppercase;
   margin-top: 4px;
 }
+
+/* Floating Toast Notification */
+.custom-toast {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: var(--bg-translucent);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 20px;
+  box-shadow: var(--shadow-lg);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-h);
+  cursor: pointer;
+  animation: slideUpFadeIn 0.3s ease-out;
+  max-width: 450px;
+  text-align: center;
+  pointer-events: auto;
+}
+
+@keyframes slideUpFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* User Location Pulse Marker */
+.user-location-marker-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.user-location-ping {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.core-dot {
+  width: 10px;
+  height: 10px;
+  background: #3b82f6;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  z-index: 2;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.ping-circle {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  background: rgba(59, 130, 246, 0.4);
+  border-radius: 50%;
+  animation: pulse-ring 1.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  z-index: 1;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  80%, 100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}

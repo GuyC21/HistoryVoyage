@@ -1,14 +1,35 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { MapContainer } from 'react-leaflet'
+import { MapContainer, Marker, Popup } from 'react-leaflet'
+import L from 'leaflet'
 import MapView from '../components/MapView'
 import SiteDrawer from '../components/SiteDrawer'
 import ZoomPrompt from '../components/ZoomPrompt'
+import GeolocationHandler from '../components/GeolocationHandler'
+import HeaderCard from '../components/HeaderCard'
+
+// Custom pulsing blue icon for user location pin
+const userLocationIcon = L.divIcon({
+  html: `<div class="user-location-ping">
+           <div class="ping-circle"></div>
+           <div class="core-dot"></div>
+         </div>`,
+  className: 'user-location-marker-wrapper',
+  iconSize: [20, 20],
+  iconAnchor: [10, 10]
+})
 
 const API_BASE = window.location.hostname === '127.0.0.1'
   ? 'http://127.0.0.1:8000'
   : 'http://localhost:8000'
 const MIN_ZOOM_GATE = 7
 
+/**
+ * MapExplorer Page Component
+ * Main application dashboard and viewport for the HistoryVoyage map.
+ * Manages coordinates querying, viewport bounding-box debounces, active category filtering tags,
+ * interface language state, and sliding details drawer loaders. 
+ * Orchestrates calls to the local Django backend and fetches metadata/assets dynamically from Wikidata APIs.
+ */
 export default function MapExplorer() {
   const [bounds, setBounds] = useState(null)
   const [zoom, setZoom] = useState(7)
@@ -28,8 +49,20 @@ export default function MapExplorer() {
   const [drawerLoading, setDrawerLoading] = useState(false)
   const [error, setError] = useState(null)
   
-  const mapRef = useRef(null)
+  const [mapInstance, setMapInstance] = useState(null)
+  const [userLocation, setUserLocation] = useState(null)
+  const [toast, setToast] = useState(null)
+  
+  const geoRef = useRef(null)
   const drawerAbortRef = useRef(null)
+
+  // Automatically clear toast messages after 5 seconds
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [toast])
 
   // Fetch sites when bounds change (bounds are debounced in MapView)
   useEffect(() => {
@@ -170,16 +203,16 @@ export default function MapExplorer() {
 
   // Handle Zoom In from warning overlay
   const handleZoomInClick = () => {
-    if (mapRef.current) {
-      mapRef.current.setZoom(MIN_ZOOM_GATE)
+    if (mapInstance) {
+      mapInstance.setZoom(MIN_ZOOM_GATE)
     }
   }
 
   // Handle Quick Jump to key tourist destinations
   const handleQuickJump = (lat, lng) => {
-    if (mapRef.current) {
+    if (mapInstance) {
       // Zoom into 12 which automatically clears the zoom gate (zoom >= 7) and fetches markers
-      mapRef.current.setView([lat, lng], 12)
+      mapInstance.setView([lat, lng], 12)
     }
   }
 
@@ -196,64 +229,17 @@ export default function MapExplorer() {
   return (
     <div className="dashboard-container">
       {/* Floating Header Card */}
-      <header className="floating-header">
-        <div className="header-top-row">
-          <h1>
-            <span>🗺️</span> HistoryVoyage
-          </h1>
-          
-          {/* Global Language Selector */}
-          <div className="language-toggle" title="Select Interface Language">
-            <button
-              className={`language-toggle-btn ${languageMode === 'en' ? 'active' : ''}`}
-              onClick={() => setLanguageMode('en')}
-            >
-              EN
-            </button>
-            <button
-              className={`language-toggle-btn ${languageMode === 'local' ? 'active' : ''}`}
-              onClick={() => setLanguageMode('local')}
-            >
-              Local
-            </button>
-          </div>
-        </div>
-        <p>Explore ancient civilisations across Israel, Greece, and Italy.</p>
-        
-        <div className="stats-bar">
-          <span className="stat-badge">
-            {zoom < MIN_ZOOM_GATE 
-              ? 'Zoom in to view' 
-              : `Visible: ${filteredSites.length} sites`}
-          </span>
-          {activeFilter !== 'all' && (
-            <span className="stat-badge" style={{ background: 'var(--border)', color: 'var(--text-h)' }}>
-              Filter: {activeFilter}
-            </span>
-          )}
-        </div>
-
-        {/* Quick Jump Buttons for Tourists */}
-        <div className="filters-container" style={{ marginTop: '10px', gap: '4px' }}>
-          <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-h)', alignSelf: 'center', marginRight: '4px' }}>Fly to:</span>
-          <button className="filter-btn" onClick={() => handleQuickJump(41.8902, 12.4922)}>🏟️ Rome</button>
-          <button className="filter-btn" onClick={() => handleQuickJump(37.9715, 23.7263)}>🏛️ Athens</button>
-          <button className="filter-btn" onClick={() => handleQuickJump(31.7767, 35.2227)}>🏰 Jerusalem</button>
-        </div>
-
-        {/* Filters */}
-        <div className="filters-container">
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              className={`filter-btn ${activeFilter === cat.id ? 'active' : ''}`}
-              onClick={() => setActiveFilter(cat.id)}
-            >
-              <span>{cat.emoji}</span> {cat.label}
-            </button>
-          ))}
-        </div>
-      </header>
+      <HeaderCard
+        languageMode={languageMode}
+        setLanguageMode={setLanguageMode}
+        zoom={zoom}
+        minZoomGate={MIN_ZOOM_GATE}
+        visibleSitesCount={filteredSites.length}
+        activeFilter={activeFilter}
+        setActiveFilter={setActiveFilter}
+        categories={categories}
+        onQuickJump={handleQuickJump}
+      />
 
       {/* Map loading spinner */}
       {loading && (
@@ -279,13 +265,95 @@ export default function MapExplorer() {
           maxZoom={18}
           className="map-element"
           zoomControl={false}
-          ref={mapRef}
+          ref={setMapInstance}
         >
-          {/* Custom zoom controls */}
-          <div className="leaflet-bottom leaflet-right" style={{ marginBottom: '10px', marginRight: '10px' }}>
-            <div className="leaflet-control leaflet-bar">
-              <a className="leaflet-control-zoom-in" href="#" title="Zoom in" role="button" aria-label="Zoom in" onClick={(e) => { e.preventDefault(); mapRef.current.zoomIn(); }}>+</a>
-              <a className="leaflet-control-zoom-out" href="#" title="Zoom out" role="button" aria-label="Zoom out" onClick={(e) => { e.preventDefault(); mapRef.current.zoomOut(); }}>-</a>
+          {/* Custom Controls (Locate Me & Zoom) */}
+          <div className="leaflet-bottom leaflet-right" style={{ marginBottom: '10px', marginRight: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {/* Locate Me button */}
+            <div className="leaflet-control leaflet-bar" style={{ border: 'none', boxShadow: 'var(--shadow-sm)', margin: 0 }}>
+              <a 
+                href="#" 
+                title="Locate Me" 
+                role="button" 
+                aria-label="Locate Me" 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  fontSize: '15px', 
+                  background: 'var(--bg-translucent)', 
+                  backdropFilter: 'blur(8px)', 
+                  border: '1px solid var(--border)', 
+                  borderRadius: '8px', 
+                  width: '34px', 
+                  height: '34px',
+                  color: 'var(--text-h)',
+                  cursor: 'pointer'
+                }}
+                onClick={(e) => { 
+                  e.preventDefault(); 
+                  geoRef.current?.locate(); 
+                }}
+              >
+                🎯
+              </a>
+            </div>
+
+            {/* Zoom Controls */}
+            <div className="leaflet-control leaflet-bar" style={{ border: 'none', boxShadow: 'var(--shadow-sm)', margin: 0 }}>
+              <a 
+                className="leaflet-control-zoom-in" 
+                href="#" 
+                title="Zoom in" 
+                role="button" 
+                aria-label="Zoom in" 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  background: 'var(--bg-translucent)', 
+                  backdropFilter: 'blur(8px)', 
+                  border: '1px solid var(--border)', 
+                  borderBottom: 'none', 
+                  borderRadius: '8px 8px 0 0', 
+                  width: '34px', 
+                  height: '34px',
+                  color: 'var(--text-h)',
+                  cursor: 'pointer'
+                }} 
+                onClick={(e) => { 
+                  e.preventDefault(); 
+                  if (mapInstance) mapInstance.zoomIn(); 
+                }}
+              >
+                +
+              </a>
+              <a 
+                className="leaflet-control-zoom-out" 
+                href="#" 
+                title="Zoom out" 
+                role="button" 
+                aria-label="Zoom out" 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  background: 'var(--bg-translucent)', 
+                  backdropFilter: 'blur(8px)', 
+                  border: '1px solid var(--border)', 
+                  borderRadius: '0 0 8px 8px', 
+                  width: '34px', 
+                  height: '34px',
+                  color: 'var(--text-h)',
+                  cursor: 'pointer'
+                }} 
+                onClick={(e) => { 
+                  e.preventDefault(); 
+                  if (mapInstance) mapInstance.zoomOut(); 
+                }}
+              >
+                -
+              </a>
             </div>
           </div>
 
@@ -298,6 +366,23 @@ export default function MapExplorer() {
             currentZoom={zoom}
             minZoomGate={MIN_ZOOM_GATE}
           />
+
+          {/* Reusable geolocation logic component */}
+          <GeolocationHandler 
+            ref={geoRef} 
+            mapInstance={mapInstance} 
+            onToast={setToast} 
+            onLocationFound={setUserLocation} 
+          />
+
+          {/* User location pulsing blue dot pin */}
+          {userLocation && (
+            <Marker position={userLocation} icon={userLocationIcon}>
+              <Popup>
+                <div style={{ fontWeight: '600', fontSize: '12px', textAlign: 'center' }}>You are here</div>
+              </Popup>
+            </Marker>
+          )}
         </MapContainer>
       </main>
 
@@ -318,6 +403,13 @@ export default function MapExplorer() {
         languageMode={languageMode}
         setLanguageMode={setLanguageMode}
       />
+
+      {/* Floating toast notification */}
+      {toast && (
+        <div className="custom-toast" onClick={() => setToast(null)}>
+          <span>ℹ️ {toast}</span>
+        </div>
+      )}
     </div>
   )
 }
