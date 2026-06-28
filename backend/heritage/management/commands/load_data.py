@@ -6,6 +6,36 @@ from django.core.management.base import BaseCommand
 from django.contrib.gis.geos import Point
 from heritage.models import HistoricalSite
 
+def is_historical_museum(name, tags):
+    # 1. If it has a 'historic' tag, it is historical
+    if 'historic' in tags:
+        return True
+        
+    # 2. Check museum/subject sub-tags (e.g. museum=history, museum=archaeological)
+    museum_type = tags.get('museum', '').lower()
+    subject = tags.get('subject', '').lower()
+    for val in [museum_type, subject]:
+        if any(k in val for k in ['history', 'archaeo', 'archeo', 'castle', 'ruin', 'ancient', 'crusader', 'fortress', 'military_history', 'local_history', 'open_air']):
+            return True
+
+    # 3. Check for historical keywords in English, Hebrew, Italian, and Greek names
+    keywords = [
+        # English
+        'castle', 'fort', 'fortress', 'ruin', 'archaeological', 'archeological', 'monument', 'monastery', 
+        'tomb', 'ancient', 'history', 'heritage', 'tower', 'excavation', 'citadel', 'temple', 'crusader', 'knight',
+        # Hebrew
+        'אבירים', 'מצודה', 'חורבת', 'עתיקות', 'ארכאולוגי', 'מגדל', 'קבר', 'מנזר', 'היכל', 'תל', 'שער', 'חומות', 'היסטורי', 'מבצר',
+        # Italian
+        'castello', 'rovine', 'archeologico', 'fortezza', 'torre', 'tomba', 'monastero', 'palazzo', 
+        'mura', 'porta', 'antica', 'scavi', 'tempio', 'storico',
+        # Greek
+        'κάστρο', 'ερείπια', 'αρχαιολογικός', 'φρούριο', 'πύργος', 'τάφος', 'μοναστήρι', 'ναός', 'πύλη', 'αρχαία', 'ιστορικό'
+    ]
+    
+    name_lower = name.lower()
+    return any(keyword in name_lower for keyword in keywords)
+
+
 class Command(BaseCommand):
     help = 'Harvest historical and holy sites from OpenStreetMap (via Overpass API) and seed the database'
 
@@ -24,17 +54,22 @@ class Command(BaseCommand):
             
             # Construct the Overpass QL query
             # We filter for nodes and ways with a name tag in the search area
+            # We fetch historic items (including expanded values) and museum attractions
             query = f"""
-            [out:json][timeout:180];
+            [out:json][timeout:300];
             area["ISO3166-1"="{country['code']}"]->.searchArea;
             (
-              // Castles, ruins, monuments, monasteries, tombs, archaeological sites
-              node["historic"~"castle|ruins|monument|monastery|tomb|archaeological_site"]["name"](area.searchArea);
-              way["historic"~"castle|ruins|monument|monastery|tomb|archaeological_site"]["name"](area.searchArea);
+              // Castles, ruins, monuments, monasteries, tombs, archaeological sites, forts
+              node["historic"~"castle|ruins|monument|monastery|tomb|archaeological_site|fortress|fort|city_gate|battlefield|archaeological|ruin"]["name"](area.searchArea);
+              way["historic"~"castle|ruins|monument|monastery|tomb|archaeological_site|fortress|fort|city_gate|battlefield|archaeological|ruin"]["name"](area.searchArea);
               
               // Places of worship marked as historic
               node["amenity"="place_of_worship"]["historic"]["name"](area.searchArea);
               way["amenity"="place_of_worship"]["historic"]["name"](area.searchArea);
+              
+              // Museums (which might be Crusader citadels, ruins or ancient structures)
+              node["tourism"="museum"]["name"](area.searchArea);
+              way["tourism"="museum"]["name"](area.searchArea);
             );
             out center;
             """
@@ -55,6 +90,11 @@ class Command(BaseCommand):
                             raw_data = response.read().decode('utf-8')
                             osm_data = json.loads(raw_data)
                         
+                        # Overpass API returns a 'remark' field if it times out or fails internally
+                        # (even with HTTP 200 and an empty elements list)
+                        if 'remark' in osm_data:
+                            raise Exception(f"Overpass Server Error: {osm_data['remark']}")
+                        
                         duration = time.time() - start_time
                         elements = osm_data.get('elements', [])
                         self.stdout.write(self.style.SUCCESS(f"Successfully fetched {len(elements)} items in {duration:.2f}s"))
@@ -69,7 +109,14 @@ class Command(BaseCommand):
 
                 total_elements = len(elements)
                 self.stdout.write(f"Preparing to seed {total_elements} sites in database...")
-                
+
+                # Force Django to close the database connection.
+                # If the Overpass API fetch was slow (e.g. taking >60s), the cloud router
+                # will drop the idle TCP connection, leading to SSL SYSCALL EOF errors.
+                # Closing it here forces Django to open a fresh, active connection.
+                from django.db import connection
+                connection.close()
+
                 # Fetch existing sites for this country to build an in-memory lookup cache
                 self.stdout.write("Fetching existing sites from database for in-memory deduplication...")
                 existing_sites = HistoricalSite.objects.filter(country=country['name'])
@@ -100,6 +147,11 @@ class Command(BaseCommand):
                     if not name:
                         continue
 
+                    # Filter out modern museums (e.g. art galleries, science centers)
+                    tourism = tags.get('tourism', '')
+                    if tourism == 'museum' and not is_historical_museum(name, tags):
+                        continue
+
                     # Get coordinates depending on element type
                     lat = el.get('lat')
                     lon = el.get('lon')
@@ -128,7 +180,21 @@ class Command(BaseCommand):
                     elif historic == 'archaeological_site':
                         site_type = 'archaeological'
                     else:
-                        site_type = 'other'
+                        # Map historical museums based on keywords
+                        if tourism == 'museum':
+                            name_lower = name.lower()
+                            if any(k in name_lower for k in ['castle', 'fort', 'fortress', 'citadel', 'מצודה', 'מבצר', 'castello', 'fortezza', 'κάστρο', 'φρούριο', 'אבירים', 'knights']):
+                                site_type = 'castle'
+                            elif any(k in name_lower for k in ['ruin', 'rovine', 'ερείπια', 'חורבת']):
+                                site_type = 'ruins'
+                            elif any(k in name_lower for k in ['monument', 'tower', 'gate', 'מגדל', 'שער', 'torre', 'porta', 'πύργος', 'πύλη']):
+                                site_type = 'monument'
+                            elif any(k in name_lower for k in ['monastery', 'tomb', 'temple', 'holy', 'church', 'mosque', 'synagogue', 'מנזר', 'קבר', 'היכל', 'monastero', 'tomba', 'tempio', 'μοναστήρι', 'τάφος', 'ναός']):
+                                site_type = 'holy_site'
+                            else:
+                                site_type = 'archaeological'
+                        else:
+                            site_type = 'other'
 
                     # Extract other metadata
                     wikidata = tags.get('wikidata')

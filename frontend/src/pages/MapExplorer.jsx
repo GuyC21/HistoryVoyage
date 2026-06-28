@@ -3,7 +3,9 @@ import { MapContainer } from 'react-leaflet'
 import MapView from '../components/MapView'
 import SiteDrawer from '../components/SiteDrawer'
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = window.location.hostname === '127.0.0.1'
+  ? 'http://127.0.0.1:8000'
+  : 'http://localhost:8000'
 const MIN_ZOOM_GATE = 7
 
 export default function MapExplorer() {
@@ -15,19 +17,24 @@ export default function MapExplorer() {
   // Active category filter: 'all' or one of the SITE_TYPES ('castle', 'ruins', etc.)
   const [activeFilter, setActiveFilter] = useState('all')
   
+  // Translation preference: 'en' (English) or 'local' (Native Language)
+  const [languageMode, setLanguageMode] = useState('en')
+  
   const [selectedSite, setSelectedSite] = useState(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   
   const [loading, setLoading] = useState(false)
-  const drawerLoading = false
+  const [drawerLoading, setDrawerLoading] = useState(false)
   const [error, setError] = useState(null)
   
   const mapRef = useRef(null)
+  const drawerAbortRef = useRef(null)
 
   // Fetch sites when bounds change (bounds are debounced in MapView)
   useEffect(() => {
     if (!bounds) {
       setSites([])
+      setError(null)
       return
     }
 
@@ -73,16 +80,97 @@ export default function MapExplorer() {
     }
   }, [sites, activeFilter])
 
-  // Handle marker click
-  const handleSiteClick = (siteDetails) => {
-    setSelectedSite(siteDetails)
+  // Clean up any pending drawer fetches on unmount
+  useEffect(() => {
+    return () => {
+      if (drawerAbortRef.current) {
+        drawerAbortRef.current.abort()
+      }
+    }
+  }, [])
+
+  // Handle marker click (triggers dynamic Wikidata translation fetch)
+  const handleSiteClick = async (siteDetails) => {
+    // Cancel any in-flight translation queries to prevent race conditions
+    if (drawerAbortRef.current) {
+      drawerAbortRef.current.abort()
+    }
+
+    setSelectedSite({
+      ...siteDetails,
+      englishName: null,
+      englishDescription: null,
+      hasTranslationAttempted: false
+    })
     setIsDrawerOpen(true)
+
+    // If there is no Wikidata ID, we cannot translate, so exit early
+    if (!siteDetails.wikidata) {
+      return
+    }
+
+    setDrawerLoading(true)
+    const controller = new AbortController()
+    drawerAbortRef.current = controller
+
+    try {
+      const response = await fetch(
+        `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${siteDetails.wikidata}&props=labels|descriptions&languages=en&format=json&origin=*`,
+        { signal: controller.signal }
+      )
+      if (!response.ok) {
+        throw new Error('Wikidata fetch failed')
+      }
+      const data = await response.json()
+      
+      const entity = data.entities?.[siteDetails.wikidata]
+      const englishName = entity?.labels?.en?.value || null
+      const englishDescription = entity?.descriptions?.en?.value || null
+
+      setSelectedSite((prev) => {
+        // Only update state if the user hasn't switched to a different marker in the meantime
+        if (prev && prev.id === siteDetails.id) {
+          return {
+            ...prev,
+            englishName: englishName,
+            englishDescription: englishDescription,
+            hasTranslationAttempted: true
+          }
+        }
+        return prev
+      })
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error('Failed to fetch Wikidata translation:', err)
+        setSelectedSite((prev) => {
+          if (prev && prev.id === siteDetails.id) {
+            return { ...prev, hasTranslationAttempted: true }
+          }
+          return prev
+        })
+      }
+    } finally {
+      setSelectedSite((prev) => {
+        if (prev && prev.id === siteDetails.id) {
+          setDrawerLoading(false)
+        }
+        return prev
+      })
+    }
   }
 
   // Handle Zoom In from warning overlay
   const handleZoomInClick = () => {
     if (mapRef.current) {
       mapRef.current.setZoom(MIN_ZOOM_GATE)
+    }
+  }
+
+  // Handle Quick Jump to key tourist destinations
+  const handleQuickJump = (lat, lng) => {
+    if (mapRef.current) {
+      // Zoom into 12 which automatically clears the zoom gate (zoom >= 7) and fetches markers
+      mapRef.current.setView([lat, lng], 12)
     }
   }
 
@@ -100,9 +188,27 @@ export default function MapExplorer() {
     <div className="dashboard-container">
       {/* Floating Header Card */}
       <header className="floating-header">
-        <h1>
-          <span>🗺️</span> HistoryVoyage
-        </h1>
+        <div className="header-top-row">
+          <h1>
+            <span>🗺️</span> HistoryVoyage
+          </h1>
+          
+          {/* Global Language Selector */}
+          <div className="language-toggle" title="Select Interface Language">
+            <button
+              className={`language-toggle-btn ${languageMode === 'en' ? 'active' : ''}`}
+              onClick={() => setLanguageMode('en')}
+            >
+              EN
+            </button>
+            <button
+              className={`language-toggle-btn ${languageMode === 'local' ? 'active' : ''}`}
+              onClick={() => setLanguageMode('local')}
+            >
+              Local
+            </button>
+          </div>
+        </div>
         <p>Explore ancient civilisations across Israel, Greece, and Italy.</p>
         
         <div className="stats-bar">
@@ -116,6 +222,14 @@ export default function MapExplorer() {
               Filter: {activeFilter}
             </span>
           )}
+        </div>
+
+        {/* Quick Jump Buttons for Tourists */}
+        <div className="filters-container" style={{ marginTop: '10px', gap: '4px' }}>
+          <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-h)', alignSelf: 'center', marginRight: '4px' }}>Fly to:</span>
+          <button className="filter-btn" onClick={() => handleQuickJump(41.8902, 12.4922)}>🏟️ Rome</button>
+          <button className="filter-btn" onClick={() => handleQuickJump(37.9715, 23.7263)}>🏛️ Athens</button>
+          <button className="filter-btn" onClick={() => handleQuickJump(31.7767, 35.2227)}>🏰 Jerusalem</button>
         </div>
 
         {/* Filters */}
@@ -200,6 +314,8 @@ export default function MapExplorer() {
           setSelectedSite(null)
         }}
         isLoading={drawerLoading}
+        languageMode={languageMode}
+        setLanguageMode={setLanguageMode}
       />
     </div>
   )

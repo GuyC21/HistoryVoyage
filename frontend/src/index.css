@@ -517,3 +517,101 @@ html, body, #root {
     transform: translateY(0);
   }
 }
+
+/* Global and Drawer Translation UI Styles */
+.header-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  width: 100%;
+  gap: 16px;
+}
+
+.floating-header h1 {
+  margin: 0 !important; /* override previous margin */
+}
+
+.language-toggle {
+  display: inline-flex;
+  background: var(--border);
+  border-radius: 8px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  align-items: center;
+}
+
+.language-toggle-btn {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.language-toggle-btn.active {
+  background: var(--bg);
+  color: var(--text-h);
+  box-shadow: var(--shadow-sm);
+}
+
+.drawer-language-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  width: 100%;
+}
+
+.drawer-native-name {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text);
+  margin-top: 4px;
+  opacity: 0.85;
+}
+
+.drawer-language-selector {
+  display: inline-flex;
+  background: var(--border);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.drawer-lang-btn {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.1s ease;
+  text-transform: uppercase;
+}
+
+.drawer-lang-btn.active {
+  background: var(--bg);
+  color: var(--text-h);
+  box-shadow: var(--shadow-sm);
+}
+
+.fallback-indicator {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--border);
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+  vertical-align: middle;
+  text-transform: uppercase;
+  margin-top: 4px;
+}

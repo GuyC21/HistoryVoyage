@@ -88,9 +88,16 @@ function MapEventsHandler({ onBoundsChange, onZoomChange, minZoomGate }) {
 
   // Trigger initial bounds calculation on load
   useEffect(() => {
+    // Force Leaflet to recalculate container size to fix grey map/misaligned coordinate bug
+    const sizeTimer = setTimeout(() => {
+      map.invalidateSize()
+    }, 150)
+
     handleMapChange()
     onZoomChange(map.getZoom())
+
     return () => {
+      clearTimeout(sizeTimer)
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current)
       }
