@@ -77,7 +77,7 @@ export default function SiteDrawer({
           <div className="skeleton skeleton-text" style={{ width: '50%' }}></div>
         </div>
       ) : site ? (
-        <>
+        <div className="drawer-scroll-container">
           {site.imageUrl && (
             <div className="drawer-image-container">
               <img 
@@ -158,7 +158,7 @@ export default function SiteDrawer({
               📚 Explore on Wikidata
             </a>
           )}
-        </>
+        </div>
       ) : (
         <p>Select a historical site to view details.</p>
       )}

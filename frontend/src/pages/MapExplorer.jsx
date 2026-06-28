@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { MapContainer } from 'react-leaflet'
 import MapView from '../components/MapView'
 import SiteDrawer from '../components/SiteDrawer'
+import ZoomPrompt from '../components/ZoomPrompt'
 
 const API_BASE = window.location.hostname === '127.0.0.1'
   ? 'http://127.0.0.1:8000'
@@ -302,15 +303,7 @@ export default function MapExplorer() {
 
       {/* Zoom Gate Low Zoom Message */}
       {zoom < MIN_ZOOM_GATE && (
-        <div className="zoom-warning-overlay">
-          <div className="zoom-warning-card">
-            <h3>Explore Historical Regions</h3>
-            <p>We have loaded 29,795 sites across Italy, Greece, and Israel. Zoom in to start exploring markers.</p>
-            <button className="zoom-btn" onClick={handleZoomInClick}>
-              🔍 Zoom in to Explore
-            </button>
-          </div>
-        </div>
+        <ZoomPrompt onZoomClick={handleZoomInClick} />
       )}
 
       {/* Slide-out details drawer */}

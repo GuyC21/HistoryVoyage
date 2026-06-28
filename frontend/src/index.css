@@ -321,6 +321,17 @@ html, body, #root {
   transform: translateX(0);
 }
 
+.drawer-scroll-container {
+  flex: 1;
+  overflow-y: auto;
+  margin: -32px -24px;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
 .drawer-close-btn {
   position: absolute;
   top: 16px;
