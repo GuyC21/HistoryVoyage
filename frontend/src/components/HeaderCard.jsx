@@ -16,6 +16,7 @@ import React from 'react'
  * @param {Function} props.setActiveFilter - Callback to change the selected category filter.
  * @param {Array<Object>} props.categories - Array of selectable categories (id, label, emoji).
  * @param {Function} props.onQuickJump - Callback to zoom/pan the map coordinates: (lat, lng) => void.
+ * @param {Function} props.onLocateUser - Callback to trigger user geolocation and center the map on their location.
  */
 export default function HeaderCard({
   languageMode,
@@ -26,7 +27,8 @@ export default function HeaderCard({
   activeFilter,
   setActiveFilter,
   categories,
-  onQuickJump
+  onQuickJump,
+  onLocateUser
 }) {
   return (
     <header className="floating-header">
@@ -72,6 +74,7 @@ export default function HeaderCard({
         <button className="filter-btn" onClick={() => onQuickJump(41.8902, 12.4922)}>🏟️ Rome</button>
         <button className="filter-btn" onClick={() => onQuickJump(37.9715, 23.7263)}>🏛️ Athens</button>
         <button className="filter-btn" onClick={() => onQuickJump(31.7767, 35.2227)}>🏰 Jerusalem</button>
+        <button className="filter-btn" onClick={onLocateUser} title="Jump to my location">🎯 My Location</button>
       </div>
 
       {/* Filters */}

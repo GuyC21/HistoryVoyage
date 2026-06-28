@@ -239,6 +239,7 @@ export default function MapExplorer() {
         setActiveFilter={setActiveFilter}
         categories={categories}
         onQuickJump={handleQuickJump}
+        onLocateUser={() => geoRef.current?.locate()}
       />
 
       {/* Map loading spinner */}
