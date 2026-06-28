@@ -1,0 +1,189 @@
+import urllib.request
+import urllib.parse
+import json
+import time
+from django.core.management.base import BaseCommand
+from django.contrib.gis.geos import Point
+from heritage.models import HistoricalSite
+
+class Command(BaseCommand):
+    help = 'Harvest historical and holy sites from OpenStreetMap (via Overpass API) and seed the database'
+
+    def handle(self, *args, **options):
+        # Target countries in specified order: Israel, Greece, Italy
+        countries = [
+            {'name': 'Israel', 'code': 'IL'},
+            {'name': 'Greece', 'code': 'GR'},
+            {'name': 'Italy', 'code': 'IT'},
+        ]
+
+        overpass_url = 'https://overpass-api.de/api/interpreter'
+
+        for country in countries:
+            self.stdout.write(self.style.WARNING(f"\n---> Starting harvest for {country['name']}..."))
+            
+            # Construct the Overpass QL query
+            # We filter for nodes and ways with a name tag in the search area
+            query = f"""
+            [out:json][timeout:180];
+            area["ISO3166-1"="{country['code']}"]->.searchArea;
+            (
+              // Castles, ruins, monuments, monasteries, tombs, archaeological sites
+              node["historic"~"castle|ruins|monument|monastery|tomb|archaeological_site"]["name"](area.searchArea);
+              way["historic"~"castle|ruins|monument|monastery|tomb|archaeological_site"]["name"](area.searchArea);
+              
+              // Places of worship marked as historic
+              node["amenity"="place_of_worship"]["historic"]["name"](area.searchArea);
+              way["amenity"="place_of_worship"]["historic"]["name"](area.searchArea);
+            );
+            out center;
+            """
+            
+            # Send POST request using built-in urllib
+            data = urllib.parse.urlencode({'data': query}).encode('utf-8')
+            req = urllib.request.Request(overpass_url, data=data, headers={'User-Agent': 'GeospatialHeritagePlanner/1.0'})
+            
+            try:
+                max_retries = 3
+                osm_data = None
+                
+                for attempt in range(1, max_retries + 1):
+                    try:
+                        self.stdout.write(f"Fetching data from Overpass API for {country['name']} (Attempt {attempt}/{max_retries})...")
+                        start_time = time.time()
+                        with urllib.request.urlopen(req) as response:
+                            raw_data = response.read().decode('utf-8')
+                            osm_data = json.loads(raw_data)
+                        
+                        duration = time.time() - start_time
+                        elements = osm_data.get('elements', [])
+                        self.stdout.write(self.style.SUCCESS(f"Successfully fetched {len(elements)} items in {duration:.2f}s"))
+                        break
+                    except Exception as e:
+                        self.stdout.write(self.style.WARNING(f"Attempt {attempt} failed: {str(e)}"))
+                        if attempt < max_retries:
+                            self.stdout.write("Waiting 15 seconds before retrying...")
+                            time.sleep(15)
+                        else:
+                            raise e
+
+                total_elements = len(elements)
+                self.stdout.write(f"Preparing to seed {total_elements} sites in database...")
+                
+                # Fetch existing sites for this country to build an in-memory lookup cache
+                self.stdout.write("Fetching existing sites from database for in-memory deduplication...")
+                existing_sites = HistoricalSite.objects.filter(country=country['name'])
+                
+                lookup = {}
+                for s in existing_sites:
+                    # Key by (name, round(lon, 6), round(lat, 6)) to safely match coordinates
+                    key = (s.name.lower(), round(s.location.x, 6), round(s.location.y, 6))
+                    lookup[key] = s
+                
+                self.stdout.write(f"Cache built with {len(lookup)} existing sites.")
+
+                to_create = []
+                to_update = []
+                added_count = 0
+                updated_count = 0
+                
+                start_processing = time.time()
+                for idx, el in enumerate(elements, 1):
+                    # Progress reporting every 1000 items
+                    if idx % 1000 == 0 or idx == total_elements:
+                        elapsed = time.time() - start_processing
+                        percentage = (idx / total_elements) * 100
+                        self.stdout.write(f"  Processed {idx}/{total_elements} items ({percentage:.1f}%) - elapsed: {elapsed:.1f}s...")
+
+                    tags = el.get('tags', {})
+                    name = tags.get('name')
+                    if not name:
+                        continue
+
+                    # Get coordinates depending on element type
+                    lat = el.get('lat')
+                    lon = el.get('lon')
+                    
+                    # If it's a way/relation with center geometry from "out center;"
+                    if not lat or not lon:
+                        center = el.get('center', {})
+                        lat = center.get('lat')
+                        lon = center.get('lon')
+
+                    if not lat or not lon:
+                        continue
+
+                    # Determine site type mapping
+                    historic = tags.get('historic', '')
+                    amenity = tags.get('amenity', '')
+                    
+                    if historic == 'castle':
+                        site_type = 'castle'
+                    elif historic == 'ruins':
+                        site_type = 'ruins'
+                    elif historic == 'monument':
+                        site_type = 'monument'
+                    elif historic in ['monastery', 'tomb'] or amenity == 'place_of_worship':
+                        site_type = 'holy_site'
+                    elif historic == 'archaeological_site':
+                        site_type = 'archaeological'
+                    else:
+                        site_type = 'other'
+
+                    # Extract other metadata
+                    wikidata = tags.get('wikidata')
+                    description = tags.get('description') or tags.get('note') or tags.get('comment')
+                    
+                    # Generate lookup key
+                    key = (name.lower(), round(float(lon), 6), round(float(lat), 6))
+                    
+                    site_match = lookup.get(key)
+                    
+                    if not site_match:
+                        # Instantiate model for creation
+                        location = Point(float(lon), float(lat), srid=4326)
+                        to_create.append(HistoricalSite(
+                            name=name,
+                            country=country['name'],
+                            site_type=site_type,
+                            location=location,
+                            wikidata=wikidata,
+                            description=description
+                        ))
+                        added_count += 1
+                    else:
+                        # Check if updates are needed on existing model
+                        changed = False
+                        if site_match.site_type != site_type:
+                            site_match.site_type = site_type
+                            changed = True
+                        if wikidata and site_match.wikidata != wikidata:
+                            site_match.wikidata = wikidata
+                            changed = True
+                        if description and site_match.description != description:
+                            site_match.description = description
+                            changed = True
+                        
+                        if changed:
+                            to_update.append(site_match)
+                            updated_count += 1
+
+                self.stdout.write(f"Syncing with database: creating {len(to_create)} new, updating {len(to_update)} existing...")
+                
+                # Perform bulk operations to database in batches of 1000
+                if to_create:
+                    HistoricalSite.objects.bulk_create(to_create, batch_size=1000)
+                if to_update:
+                    HistoricalSite.objects.bulk_update(to_update, ['site_type', 'wikidata', 'description'], batch_size=1000)
+
+                self.stdout.write(self.style.SUCCESS(
+                    f"Finished {country['name']}: {added_count} sites added, {updated_count} sites updated."
+                ))
+                
+                # Sleep briefly between requests to be polite to the free Overpass API
+                time.sleep(2)
+
+            except Exception as e:
+                self.stdout.write(self.style.ERROR(f"Failed to harvest {country['name']}: {str(e)}"))
+        
+        self.stdout.write(self.style.SUCCESS("\nSeeding complete!"))
