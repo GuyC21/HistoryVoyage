@@ -1,111 +1,519 @@
+@import "leaflet/dist/leaflet.css";
+
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
+  --text: #6b7280;
+  --text-h: #111827;
+  --bg: #ffffff;
+  --bg-translucent: rgba(255, 255, 255, 0.8);
+  --border: #e5e7eb;
   --accent: #aa3bff;
+  --accent-hover: #8e2bde;
   --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  --accent-border: rgba(170, 59, 255, 0.3);
+  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  
+  /* Category Colors */
+  --color-castle: #3b82f6;       /* Blue */
+  --color-ruins: #f59e0b;        /* Amber */
+  --color-holy: #10b981;         /* Emerald */
+  --color-monument: #8b5cf6;     /* Violet */
+  --color-archaeological: #ec4899; /* Pink */
+  --color-other: #6b7280;        /* Gray */
+  
+  --sans: 'Outfit', system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, monospace;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --text: #9ca3af;
     --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
+    --bg: #0f172a;
+    --bg-translucent: rgba(15, 23, 42, 0.85);
+    --border: #1e293b;
     --accent: #c084fc;
+    --accent-hover: #a855f7;
     --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+    --accent-border: rgba(192, 132, 252, 0.4);
+    --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
   }
 }
 
-body {
+html, body, #root {
   margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  font-family: var(--sans);
+  color: var(--text);
+  background-color: var(--bg);
+  -webkit-font-smoothing: antialiased;
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
+/* Fullscreen Dashboard Layout */
+.dashboard-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+
+/* Map Wrapper */
+.map-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.map-element {
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+}
+
+/* Clean Custom Leaflet Controls */
+.leaflet-control-zoom {
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-sm) !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+}
+
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+  background-color: var(--bg-translucent) !important;
+  color: var(--text-h) !important;
+  border: none !important;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+}
+
+.leaflet-control-zoom-in:hover,
+.leaflet-control-zoom-out:hover {
+  background-color: var(--accent-bg) !important;
+  color: var(--accent) !important;
+}
+
+.leaflet-bar {
+  border: none !important;
+}
+
+/* Custom Floating Header */
+.floating-header {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
+  background: var(--bg-translucent);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  border-radius: 16px;
+  padding: 16px 24px;
+  max-width: 400px;
+  pointer-events: auto;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.floating-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-h);
+  margin: 0 0 4px 0;
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.floating-header p {
+  font-size: 14px;
+  margin: 0 0 12px 0;
+  line-height: 1.4;
+}
+
+.stats-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stat-badge {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  color: var(--accent);
+}
+
+/* Floating Site-Type Filters */
+.filters-container {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.filter-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.filter-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff !important;
+}
+
+/* Zoom Gate / Low Zoom Notification Overlay */
+.zoom-warning-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 9;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(3px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none; /* Allows user to drag the map beneath */
+}
+
+.zoom-warning-card {
+  background: var(--bg-translucent);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 24px 32px;
   text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
+  box-shadow: var(--shadow-lg);
+  max-width: 320px;
+  pointer-events: auto; /* Re-enable clicks so buttons inside can be clicked */
+  animation: pulseCard 2s infinite ease-in-out;
+}
+
+.zoom-warning-card h3 {
+  margin: 0 0 8px 0;
+  color: var(--text-h);
+  font-size: 18px;
+}
+
+.zoom-warning-card p {
+  font-size: 13px;
+  margin: 0 0 16px 0;
+}
+
+.zoom-btn {
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.zoom-btn:hover {
+  background: var(--accent-hover);
+}
+
+@keyframes pulseCard {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* Custom Marker Pins */
+.custom-pin-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 32px;
+  height: 32px;
+}
+
+.custom-pin {
+  width: 24px;
+  height: 24px;
+  border-radius: 50% 50% 50% 0;
+  background: var(--marker-color, var(--accent));
+  transform: rotate(-45deg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 0 0 2px #ffffff;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.custom-pin svg {
+  transform: rotate(45deg);
+  width: 13px;
+  height: 13px;
+  fill: #ffffff;
+}
+
+/* Hover/Active states for pins */
+.custom-pin-wrapper:hover .custom-pin {
+  transform: rotate(-45deg) scale(1.2);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 0 2px var(--marker-color), 0 0 15px var(--marker-color);
+  z-index: 1000;
+}
+
+.custom-pin.selected {
+  transform: rotate(-45deg) scale(1.3);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 0 2px #ffffff, 0 0 20px var(--marker-color);
+  animation: pinBounce 0.5s ease-out;
+}
+
+@keyframes pinBounce {
+  0% { transform: rotate(-45deg) scale(1.0); }
+  50% { transform: rotate(-45deg) scale(1.4) translateY(-4px); }
+  100% { transform: rotate(-45deg) scale(1.3); }
+}
+
+/* Slide-out Sidebar Drawer */
+.site-drawer {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  bottom: 20px;
+  width: 380px;
+  z-index: 10;
+  background: var(--bg-translucent);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  border-radius: 20px;
+  padding: 32px 24px;
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
+  transform: translateX(calc(100% + 40px));
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: auto;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
+.site-drawer.open {
+  transform: translateX(0);
+}
+
+.drawer-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.drawer-close-btn:hover {
+  background: var(--border);
+  color: var(--text-h);
+}
+
+.drawer-header {
+  margin-bottom: 20px;
+}
+
+.drawer-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--marker-color, var(--accent));
+  background: var(--accent-bg);
+  padding: 4px 10px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.drawer-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-h);
+  margin: 0 0 6px 0;
+  line-height: 1.25;
+}
+
+.drawer-meta {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text);
+}
+
+.drawer-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 20px 0;
+}
+
+.drawer-body {
+  flex-grow: 1;
+  overflow-y: auto;
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.drawer-body p {
+  margin: 0 0 16px 0;
+}
+
+.wikipedia-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--text-h);
+  color: var(--bg);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 20px;
+  border-radius: 12px;
+  transition: opacity 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.wikipedia-btn:hover {
+  opacity: 0.9;
+}
+
+/* Skeleton Loading for Drawer */
+.skeleton {
+  background: linear-gradient(90deg, var(--border) 25%, var(--bg) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: skeletonLoading 1.5s infinite;
+  border-radius: 4px;
+}
+
+.skeleton-text {
+  height: 16px;
+  margin-bottom: 12px;
+}
+
+.skeleton-title {
+  height: 28px;
+  width: 80%;
+  margin-bottom: 12px;
+}
+
+.skeleton-tag {
+  height: 20px;
+  width: 100px;
+  margin-bottom: 16px;
+}
+
+@keyframes skeletonLoading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Loading Overlay for Map Data Fetch */
+.loading-indicator {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  background: var(--bg-translucent);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-h);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: var(--shadow-sm);
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive Overrides */
+@media (max-width: 768px) {
+  .floating-header {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    max-width: none;
+    padding: 12px 16px;
+  }
+  
+  .floating-header h1 {
     font-size: 20px;
   }
-}
-p {
-  margin: 0;
-}
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
+  .loading-indicator {
+    top: auto;
+    bottom: 20px;
+    left: 20px;
+    right: auto;
+  }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+  .site-drawer {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 50%;
+    border-radius: 20px 20px 0 0;
+    transform: translateY(100%);
+    box-sizing: border-box;
+  }
+
+  .site-drawer.open {
+    transform: translateY(0);
+  }
 }

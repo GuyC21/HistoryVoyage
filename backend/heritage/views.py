@@ -14,6 +14,8 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = HistoricalSite.objects.all()
     serializer_class = HistoricalSiteSerializer
 
+    pagination_class = None
+
     def get_queryset(self):
         queryset = super().get_queryset()
         
@@ -26,6 +28,25 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
                 bbox_polygon = Polygon.from_bbox((west, south, east, north))
                 # __within spatial lookup checks if the point is inside the polygon bounding box
                 queryset = queryset.filter(location__within=bbox_polygon)
+                
+                # Annotate and prioritize sites with populated wikidata first (famous/significant sites)
+                from django.db.models import ExpressionWrapper, BooleanField, Q
+                queryset = queryset.annotate(
+                    has_wikidata=ExpressionWrapper(
+                        ~Q(wikidata__isnull=True) & ~Q(wikidata=''),
+                        output_field=BooleanField()
+                    )
+                ).order_by('-has_wikidata', 'id')
+                
+                # Limit size to prevent client/network performance issues
+                limit_str = self.request.query_params.get('limit')
+                limit = 500
+                if limit_str:
+                    try:
+                        limit = min(int(limit_str), 1000)
+                    except ValueError:
+                        pass
+                queryset = queryset[:limit]
             except ValueError:
                 pass  # Ignore invalid parameter formats
                 
