@@ -16,6 +16,8 @@ class HistoricalSite(models.Model):
     country = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     wikidata = models.CharField(max_length=100, blank=True, null=True)
+    english_name = models.CharField(max_length=255, blank=True, null=True)
+    english_description = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.name} ({self.get_site_type_display()} - {self.country})"

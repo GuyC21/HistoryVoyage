@@ -16,6 +16,34 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
 
     pagination_class = None
 
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        
+        # If english_name is null/empty, translate on-the-fly and cache
+        if not instance.english_name:
+            try:
+                from deep_translator import GoogleTranslator
+                
+                # Translate name
+                translated_name = GoogleTranslator(source='auto', target='en').translate(instance.name)
+                if translated_name:
+                    instance.english_name = translated_name
+                
+                # Translate description if present
+                if instance.description:
+                    translated_desc = GoogleTranslator(source='auto', target='en').translate(instance.description)
+                    if translated_desc:
+                        instance.english_description = translated_desc
+                        
+                instance.save(update_fields=['english_name', 'english_description'])
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to translate site {instance.id}: {e}")
+                
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
     def get_queryset(self):
         queryset = super().get_queryset()
         

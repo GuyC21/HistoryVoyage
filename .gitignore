@@ -1,2 +1,6 @@
+# Ignore AI agent configuration directories
 .agents/
 .agents
+
+# Ignore Node.js modules directory (common in some versions)
+node_modules/

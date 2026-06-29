@@ -123,23 +123,25 @@ export default function MapExplorer() {
     }
   }, [])
 
-  // Handle marker click (triggers dynamic Wikidata translation fetch)
+  // Handle marker click (triggers dynamic translation/caching and Wikidata asset fetch)
   const handleSiteClick = async (siteDetails) => {
     // Cancel any in-flight translation queries to prevent race conditions
     if (drawerAbortRef.current) {
       drawerAbortRef.current.abort()
     }
 
+    const hasEnglishInDetails = !!siteDetails.englishName
+
     setSelectedSite({
       ...siteDetails,
-      englishName: null,
-      englishDescription: null,
+      englishName: siteDetails.englishName || null,
+      englishDescription: siteDetails.englishDescription || null,
       hasTranslationAttempted: false
     })
     setIsDrawerOpen(true)
 
-    // If there is no Wikidata ID, we cannot translate, so exit early
-    if (!siteDetails.wikidata) {
+    // If we already have the English translation, and we don't have a Wikidata ID to fetch an image for, exit early
+    if (hasEnglishInDetails && !siteDetails.wikidata) {
       return
     }
 
@@ -148,34 +150,80 @@ export default function MapExplorer() {
     drawerAbortRef.current = controller
 
     try {
-      const response = await fetch(
-        `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${siteDetails.wikidata}&props=labels|descriptions|claims&languages=en&format=json&origin=*`,
-        { signal: controller.signal }
-      )
-      if (!response.ok) {
-        throw new Error('Wikidata fetch failed')
-      }
-      const data = await response.json()
-      
-      const entity = data.entities?.[siteDetails.wikidata]
-      const englishName = entity?.labels?.en?.value || null
-      const englishDescription = entity?.descriptions?.en?.value || null
+      let backendEnglishName = siteDetails.englishName || null
+      let backendEnglishDescription = siteDetails.englishDescription || null
+      let wikidataImageUrl = null
 
-      // Extract image file name from P18 claim if present
-      let imageUrl = null
-      if (entity?.claims?.P18?.[0]?.mainsnak?.datavalue?.value) {
-        const imageName = entity.claims.P18[0].mainsnak.datavalue.value
-        imageUrl = `https://commons.wikimedia.org/w/index.php?title=Special:FilePath/${encodeURIComponent(imageName)}&width=600`
+      const promises = []
+
+      // 1. Fetch from our backend retrieve endpoint if translations are missing to trigger on-the-fly translation & caching
+      if (!hasEnglishInDetails) {
+        promises.push(
+          fetch(`${API_BASE}/api/sites/${siteDetails.id}/`, { signal: controller.signal })
+            .then((res) => {
+              if (res.ok) return res.json()
+              throw new Error('Backend retrieve failed')
+            })
+            .then((data) => {
+              const props = data.properties || {}
+              backendEnglishName = props.englishName || null
+              backendEnglishDescription = props.englishDescription || null
+            })
+            .catch((err) => {
+              if (err.name !== 'AbortError') {
+                console.error('Backend translation fetch failed:', err)
+              }
+            })
+        )
       }
+
+      // 2. Fetch from Wikidata if wikidata ID exists (for image assets and fallback translation)
+      if (siteDetails.wikidata) {
+        promises.push(
+          fetch(
+            `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${siteDetails.wikidata}&props=labels|descriptions|claims&languages=en&format=json&origin=*`,
+            { signal: controller.signal }
+          )
+            .then((res) => {
+              if (res.ok) return res.json()
+              throw new Error('Wikidata fetch failed')
+            })
+            .then((data) => {
+              const entity = data.entities?.[siteDetails.wikidata]
+              
+              // Extract image URL from P18 claim if present
+              if (entity?.claims?.P18?.[0]?.mainsnak?.datavalue?.value) {
+                const imageName = entity.claims.P18[0].mainsnak.datavalue.value
+                wikidataImageUrl = `https://commons.wikimedia.org/w/index.php?title=Special:FilePath/${encodeURIComponent(imageName)}&width=600`
+              }
+
+              // Fallback translation values from Wikidata if backend call fails or is empty
+              if (!backendEnglishName) {
+                backendEnglishName = entity?.labels?.en?.value || null
+              }
+              if (!backendEnglishDescription) {
+                backendEnglishDescription = entity?.descriptions?.en?.value || null
+              }
+            })
+            .catch((err) => {
+              if (err.name !== 'AbortError') {
+                console.error('Wikidata fetch failed:', err)
+              }
+            })
+        )
+      }
+
+      // Wait for both fetches to complete in parallel
+      await Promise.all(promises)
 
       setSelectedSite((prev) => {
         // Only update state if the user hasn't switched to a different marker in the meantime
         if (prev && prev.id === siteDetails.id) {
           return {
             ...prev,
-            englishName: englishName,
-            englishDescription: englishDescription,
-            imageUrl: imageUrl,
+            englishName: backendEnglishName,
+            englishDescription: backendEnglishDescription,
+            imageUrl: wikidataImageUrl || prev.imageUrl,
             hasTranslationAttempted: true
           }
         }
@@ -183,7 +231,7 @@ export default function MapExplorer() {
       })
     } catch (err) {
       if (err.name !== 'AbortError') {
-        console.error('Failed to fetch Wikidata translation:', err)
+        console.error('Failed to resolve translations/assets:', err)
         setSelectedSite((prev) => {
           if (prev && prev.id === siteDetails.id) {
             return { ...prev, hasTranslationAttempted: true }
@@ -239,6 +287,7 @@ export default function MapExplorer() {
         setActiveFilter={setActiveFilter}
         categories={categories}
         onQuickJump={handleQuickJump}
+        onLocateUser={() => geoRef.current?.locate()}
       />
 
       {/* Map loading spinner */}
@@ -261,7 +310,7 @@ export default function MapExplorer() {
         <MapContainer
           center={[38.5, 20.0]} // Centered on Mediterranean
           zoom={7}
-          minZoom={5}
+          minZoom={8}
           maxZoom={18}
           className="map-element"
           zoomControl={false}

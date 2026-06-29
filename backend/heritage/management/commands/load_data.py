@@ -25,6 +25,9 @@ def is_historical_museum(name, tags):
         'tomb', 'ancient', 'history', 'heritage', 'tower', 'excavation', 'citadel', 'temple', 'crusader', 'knight',
         # Hebrew
         'אבירים', 'מצודה', 'חורבת', 'עתיקות', 'ארכאולוגי', 'מגדל', 'קבר', 'מנזר', 'היכל', 'תל', 'שער', 'חומות', 'היסטורי', 'מבצר',
+        # Arabic & Transliterated Arabic (CRITICAL FOR WEST BANK DATA)
+        'khirbet', 'khirba', 'tell', 'tal', 'deir', 'dair', 'nabi', 'nebby', 'maqam', 'qubba', 'weli', 'bourj',
+        'خربة', 'تل', 'دير', 'مقام', 'مزار', 'قلعة', 'برج', 'آثار',
         # Italian
         'castello', 'rovine', 'archeologico', 'fortezza', 'torre', 'tomba', 'monastero', 'palazzo', 
         'mura', 'porta', 'antica', 'scavi', 'tempio', 'storico',
