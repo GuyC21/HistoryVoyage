@@ -6,6 +6,9 @@ import SiteDrawer from '../components/SiteDrawer'
 import ZoomPrompt from '../components/ZoomPrompt'
 import GeolocationHandler from '../components/GeolocationHandler'
 import HeaderCard from '../components/HeaderCard'
+import { useDeepLink } from '../hooks/useDeepLink'
+import { useSiteDetails } from '../hooks/useSiteDetails'
+import { useMapData } from '../hooks/useMapData'
 
 // Custom pulsing blue icon for user location pin
 const userLocationIcon = L.divIcon({
@@ -18,59 +21,16 @@ const userLocationIcon = L.divIcon({
   iconAnchor: [10, 10]
 })
 
-const API_BASE = window.location.hostname === '127.0.0.1'
-  ? 'http://127.0.0.1:8000'
-  : 'http://localhost:8000'
 const MIN_ZOOM_GATE = 7
-
-const getWikiLangCode = (country) => {
-  if (!country) return 'en'
-  const c = country.toLowerCase()
-  if (c.includes('greece') || c.includes('gr')) return 'el'
-  if (c.includes('italy') || c.includes('it')) return 'it'
-  if (c.includes('israel') || c.includes('il')) return 'he'
-  return 'en'
-}
-
-// Validates if a Wikipedia search result is likely the site we are looking for
-const isValidSearchResult = (siteName, articleTitle, country) => {
-  if (!siteName || !articleTitle) return false
-  
-  // Normalize by making lowercase, removing accents and non-alphanumeric characters
-  const normalize = (str) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\p{L}\p{N}\s]/gu, "")
-  
-  const name1 = normalize(siteName)
-  const name2 = normalize(articleTitle)
-  const countryName = country ? normalize(country) : ''
-
-  // Direct substring match is a strong signal
-  if (name1.includes(name2) || name2.includes(name1)) return true
-
-  // Generic words to ignore when comparing overlap
-  const stopWords = new Set(['the', 'of', 'in', 'and', 'at', 'on', 'for', 'a', 'an', 'fort', 'castle', 'temple', 'ruins', 'ancient', 'site', 'church', 'monastery', 'national', 'park', countryName])
-  
-  const words1 = name1.split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w))
-  const words2 = name2.split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w))
-
-  // If there are meaningful words, check if there's any intersection
-  if (words1.length > 0) {
-    return words1.some(w => words2.includes(w))
-  }
-  
-  return false
-}
 
 /**
  * MapExplorer Page Component
  * Main application dashboard and viewport for the HistoryVoyage map.
- * Manages coordinates querying, viewport bounding-box debounces, active category filtering tags,
- * interface language state, and sliding details drawer loaders. 
- * Orchestrates calls to the local Django backend and fetches metadata/assets dynamically from Wikidata APIs.
+ * Orchestrates calls to the local Django backend and fetches metadata/assets dynamically.
  */
 export default function MapExplorer() {
   const [bounds, setBounds] = useState(null)
   const [zoom, setZoom] = useState(7)
-  const [sites, setSites] = useState([])
   const [filteredSites, setFilteredSites] = useState([])
   
   // Active category filter: 'all' or one of the SITE_TYPES ('castle', 'ruins', etc.)
@@ -79,54 +39,24 @@ export default function MapExplorer() {
   // Translation preference: 'en' (English) or 'local' (Native Language)
   const [languageMode, setLanguageMode] = useState('en')
   
-  const [selectedSite, setSelectedSite] = useState(null)
   const [activePolygon, setActivePolygon] = useState(null)
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-  
-  const [loading, setLoading] = useState(false)
-  const [drawerLoading, setDrawerLoading] = useState(false)
-  const [error, setError] = useState(null)
-  
   const [mapInstance, setMapInstance] = useState(null)
   const [userLocation, setUserLocation] = useState(null)
   const [toast, setToast] = useState(null)
   
   const geoRef = useRef(null)
-  const drawerAbortRef = useRef(null)
-  const deepLinkTriggered = useRef(false)
 
-  // Handle Deep Linking on mount (when mapInstance is ready)
-  useEffect(() => {
-    if (mapInstance && !deepLinkTriggered.current) {
-      const siteId = new URLSearchParams(window.location.search).get('site')
-      if (siteId) {
-        deepLinkTriggered.current = true
-        fetch(`${API_BASE}/api/sites/${siteId}/`)
-          .then(res => {
-             if (res.ok) return res.json()
-             throw new Error('Site not found')
-          })
-          .then(data => {
-            if (data.geometry && data.geometry.coordinates) {
-              const [lng, lat] = data.geometry.coordinates
-              mapInstance.setView([lat, lng], 18)
-              handleSiteClick({
-                id: data.id,
-                ...data.properties,
-                coordinates: [lat, lng]
-              })
-            }
-          })
-          .catch(err => {
-            console.error('Deep link failed:', err)
-            const url = new URL(window.location)
-            url.searchParams.delete('site')
-            window.history.replaceState({}, '', url)
-          })
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapInstance])
+  // Custom Hooks for business logic
+  const { sites, loading, error } = useMapData(bounds)
+  const { 
+    selectedSite, 
+    isDrawerOpen, 
+    drawerLoading, 
+    handleSiteClick, 
+    closeDrawer 
+  } = useSiteDetails(mapInstance, setActivePolygon)
+
+  useDeepLink(mapInstance, handleSiteClick)
 
   // Automatically clear toast messages after 5 seconds
   useEffect(() => {
@@ -136,337 +66,16 @@ export default function MapExplorer() {
     }
   }, [toast])
 
-  // Fetch sites when bounds change (bounds are debounced in MapView)
-  useEffect(() => {
-    if (!bounds) {
-      setSites([])
-      setError(null)
-      return
-    }
-
-    const abortController = new AbortController()
-    const fetchSites = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const response = await fetch(
-          `${API_BASE}/api/sites/?in_bbox=${bounds}&limit=80`,
-          { signal: abortController.signal }
-        )
-        if (!response.ok) {
-          throw new Error(`API Error: ${response.statusText}`)
-        }
-        const data = await response.json()
-        setSites(data.features || [])
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          setError('Failed to fetch historical sites. Make sure the backend is running.')
-          console.error(err)
-        }
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchSites()
-
-    return () => {
-      abortController.abort()
-    }
-  }, [bounds])
-
-  // Filter sites locally for instant response
+  // Filter sites when sites data or activeFilter changes
   useEffect(() => {
     if (activeFilter === 'all') {
       setFilteredSites(sites)
-    } else if (activeFilter === 'relation') {
-      setFilteredSites(
-        sites.filter((site) => site.properties.osmType === 'relation')
-      )
     } else {
       setFilteredSites(
-        sites.filter((site) => site.properties.site_type === activeFilter)
+        sites.filter((site) => site.properties?.site_type === activeFilter)
       )
     }
   }, [sites, activeFilter])
-
-  // Clean up any pending drawer fetches on unmount
-  useEffect(() => {
-    return () => {
-      if (drawerAbortRef.current) {
-        drawerAbortRef.current.abort()
-      }
-    }
-  }, [])
-
-  // Handle marker click (triggers dynamic translation/caching, Wikidata assets, and boundary coordinates fetch)
-  const handleSiteClick = async (siteDetails) => {
-    // Reset previous active polygon boundary
-    setActivePolygon(null)
-
-    // Cancel any in-flight translation/geometry queries to prevent race conditions
-    if (drawerAbortRef.current) {
-      drawerAbortRef.current.abort()
-    }
-
-    const hasEnglishInDetails = !!siteDetails.englishName
-    
-    // We fetch details from our backend if the English translation is missing OR if we need to load its boundary coordinates
-    const needsBackendFetch = !hasEnglishInDetails || (siteDetails.osmType === 'relation' || siteDetails.osmType === 'way')
-
-    setSelectedSite({
-      ...siteDetails,
-      englishName: siteDetails.englishName || null,
-      englishDescription: siteDetails.englishDescription || null,
-      hasTranslationAttempted: false
-    })
-    setIsDrawerOpen(true)
-
-    // Sync to URL
-    const url = new URL(window.location)
-    url.searchParams.set('site', siteDetails.id)
-    window.history.pushState({}, '', url)
-
-    // If we already have the translation, don't need a boundary, and don't need to fetch Wikidata assets, exit early
-    if (hasEnglishInDetails && !needsBackendFetch && !siteDetails.wikidata) {
-      return
-    }
-
-    setDrawerLoading(true)
-    const controller = new AbortController()
-    drawerAbortRef.current = controller
-
-    try {
-      let backendEnglishName = siteDetails.englishName || null
-      let backendEnglishDescription = siteDetails.englishDescription || null
-      let backendLocalDescription = siteDetails.description || null
-      let wikidataImageUrl = null
-      let wikiUrlEn = null
-      let wikiUrlLocal = null
-
-      const promises = []
-
-      // 1. Fetch from our backend retrieve endpoint (loads translation on-the-fly and pulls boundary coordinates from DB)
-      if (needsBackendFetch) {
-        promises.push(
-          fetch(`${API_BASE}/api/sites/${siteDetails.id}/`, { signal: controller.signal })
-            .then((res) => {
-              if (res.ok) return res.json()
-              throw new Error('Backend retrieve failed')
-            })
-            .then((data) => {
-              const props = data.properties || {}
-              backendEnglishName = props.englishName || null
-              // Backend might have a description, prefer it if it exists
-              if (props.englishDescription) backendEnglishDescription = props.englishDescription
-              if (props.description) backendLocalDescription = props.description
-              
-              if (props.boundary) {
-                setSelectedSite((prev) => {
-                  if (prev && prev.id === siteDetails.id) {
-                    setActivePolygon(props.boundary)
-                  }
-                  return prev
-                })
-                if (mapInstance) {
-                  try {
-                    const polygonBounds = L.polygon(props.boundary).getBounds()
-                    mapInstance.fitBounds(polygonBounds, {
-                      padding: [50, 50],
-                      maxZoom: 19,
-                      animate: true,
-                      duration: 1.2
-                    })
-                  } catch (err) {
-                    console.error('Error fitting bounds:', err)
-                  }
-                }
-              }
-            })
-            .catch((err) => {
-              if (err.name !== 'AbortError') {
-                console.error('Backend retrieve failed:', err)
-              }
-            })
-        )
-      }
-
-      // Helper for wikipedia fetches
-      const fetchWikiContent = async (title, lang) => {
-        if (!title) return null
-        try {
-          const res = await fetch(`https://${lang}.wikipedia.org/w/api.php?action=query&format=json&formatversion=2&prop=extracts|pageimages&exintro=true&explaintext=true&piprop=thumbnail&pithumbsize=600&titles=${encodeURIComponent(title)}&origin=*`, { signal: controller.signal })
-          const json = await res.json()
-          const page = json.query?.pages?.[0]
-          if (page) {
-            return {
-              // Extract first paragraph by splitting at newline
-              extract: page.extract ? page.extract.split('\n')[0].trim() : null,
-              thumbnail: page.thumbnail?.source || null
-            }
-          }
-        } catch (e) {
-          if (e.name !== 'AbortError') console.error(`Wikipedia ${lang} fetch error`, e)
-        }
-        return null
-      }
-
-      // Helper for wikipedia search
-      const searchWikiContent = async (query, lang, siteName, country) => {
-        if (!query) return null
-        try {
-          // fetch up to 3 results to find the first valid one
-          const res = await fetch(`https://${lang}.wikipedia.org/w/api.php?action=query&format=json&formatversion=2&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=3&prop=extracts|pageimages&exintro=true&explaintext=true&piprop=thumbnail&pithumbsize=600&origin=*`, { signal: controller.signal })
-          const json = await res.json()
-          const pages = json.query?.pages || []
-          
-          for (const page of pages) {
-            if (isValidSearchResult(siteName, page.title, country)) {
-              return {
-                extract: page.extract ? page.extract.split('\n')[0].trim() : null,
-                thumbnail: page.thumbnail?.source || null,
-                title: page.title
-              }
-            }
-          }
-        } catch (e) {
-          if (e.name !== 'AbortError') console.error(`Wikipedia ${lang} search error`, e)
-        }
-        return null
-      }
-
-      let wikidataPromise = Promise.resolve()
-
-      // 2. Fetch from Wikidata if wikidata ID exists (for image assets and fallback translation)
-      if (siteDetails.wikidata) {
-        wikidataPromise = fetch(
-          `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${siteDetails.wikidata}&props=labels|descriptions|claims|sitelinks&languages=en&format=json&origin=*`,
-          { signal: controller.signal }
-        )
-          .then((res) => {
-            if (res.ok) return res.json()
-            throw new Error('Wikidata fetch failed')
-          })
-          .then(async (data) => {
-            const entity = data.entities?.[siteDetails.wikidata]
-            
-            // Extract image URL from P18 claim if present
-            if (entity?.claims?.P18?.[0]?.mainsnak?.datavalue?.value) {
-              const imageName = entity.claims.P18[0].mainsnak.datavalue.value
-              wikidataImageUrl = `https://commons.wikimedia.org/w/index.php?title=Special:FilePath/${encodeURIComponent(imageName)}&width=600`
-            }
-
-            // Fallback translation values from Wikidata if backend call fails or is empty
-            if (!backendEnglishName) {
-              backendEnglishName = entity?.labels?.en?.value || null
-            }
-            if (!backendEnglishDescription && entity?.descriptions?.en?.value) {
-              backendEnglishDescription = entity.descriptions.en.value
-            }
-
-            // WIKIPEDIA TIER 1: Use sitelinks for precise article fetch
-            if (entity?.sitelinks) {
-              const langCode = getWikiLangCode(siteDetails.country)
-              const enTitle = entity.sitelinks.enwiki?.title
-              const localTitle = entity.sitelinks[`${langCode}wiki`]?.title
-
-              if (enTitle) wikiUrlEn = `https://en.wikipedia.org/wiki/${encodeURIComponent(enTitle)}`
-              if (localTitle) wikiUrlLocal = `https://${langCode}.wikipedia.org/wiki/${encodeURIComponent(localTitle)}`
-
-              let enWikiData = null
-              if (enTitle) {
-                enWikiData = await fetchWikiContent(enTitle, 'en')
-                if (enWikiData) {
-                  if (!wikidataImageUrl && enWikiData.thumbnail) wikidataImageUrl = enWikiData.thumbnail
-                  // Wikipedia paragraph is always better than Wikidata short description
-                  if (enWikiData.extract) backendEnglishDescription = enWikiData.extract
-                }
-              }
-
-              let localWikiData = null
-              if (localTitle) {
-                localWikiData = await fetchWikiContent(localTitle, langCode)
-                if (localWikiData) {
-                  if (!wikidataImageUrl && localWikiData.thumbnail) wikidataImageUrl = localWikiData.thumbnail
-                  if (localWikiData.extract) backendLocalDescription = localWikiData.extract
-                }
-              }
-            }
-          })
-          .catch((err) => {
-            if (err.name !== 'AbortError') {
-              console.error('Wikidata fetch failed:', err)
-            }
-          })
-      }
-
-      promises.push(wikidataPromise)
-
-      // Wait for backend fetch and wikidata/wikipedia direct fetches to complete in parallel
-      await Promise.all(promises)
-
-      // WIKIPEDIA TIER 2: Search Fallback if Wikidata failed to provide an image/description
-      if (!wikidataImageUrl || (!backendEnglishDescription && !backendLocalDescription)) {
-        const langCode = getWikiLangCode(siteDetails.country)
-        const searchQuery = `${siteDetails.englishName || siteDetails.name}, ${siteDetails.country || ''}`.trim().replace(/,$/, '')
-        const siteNameForValidation = siteDetails.englishName || siteDetails.name
-        
-        // Search EN
-        if (!wikidataImageUrl || !backendEnglishDescription) {
-          const enSearch = await searchWikiContent(searchQuery, 'en', siteNameForValidation, siteDetails.country)
-          if (enSearch) {
-             if (!wikidataImageUrl && enSearch.thumbnail) wikidataImageUrl = enSearch.thumbnail
-             if (!backendEnglishDescription && enSearch.extract) backendEnglishDescription = enSearch.extract
-             if (!wikiUrlEn && enSearch.title) wikiUrlEn = `https://en.wikipedia.org/wiki/${encodeURIComponent(enSearch.title)}`
-          }
-        }
-        
-        // Search Local
-        if (!backendLocalDescription) {
-           const localSearch = await searchWikiContent(searchQuery, langCode, siteNameForValidation, siteDetails.country)
-           if (localSearch) {
-             if (!wikidataImageUrl && localSearch.thumbnail) wikidataImageUrl = localSearch.thumbnail
-             if (localSearch.extract) backendLocalDescription = localSearch.extract
-             if (!wikiUrlLocal && localSearch.title) wikiUrlLocal = `https://${langCode}.wikipedia.org/wiki/${encodeURIComponent(localSearch.title)}`
-           }
-        }
-      }
-
-      setSelectedSite((prev) => {
-        // Only update state if the user hasn't switched to a different marker in the meantime
-        if (prev && prev.id === siteDetails.id) {
-          return {
-            ...prev,
-            englishName: backendEnglishName,
-            englishDescription: backendEnglishDescription,
-            description: backendLocalDescription,
-            imageUrl: wikidataImageUrl || prev.imageUrl,
-            wikiUrlEn,
-            wikiUrlLocal,
-            hasTranslationAttempted: true
-          }
-        }
-        return prev
-      })
-    } catch (err) {
-      if (err.name !== 'AbortError') {
-        console.error('Failed to resolve translations/assets:', err)
-        setSelectedSite((prev) => {
-          if (prev && prev.id === siteDetails.id) {
-            return { ...prev, hasTranslationAttempted: true }
-          }
-          return prev
-        })
-      }
-    } finally {
-      setSelectedSite((prev) => {
-        if (prev && prev.id === siteDetails.id) {
-          setDrawerLoading(false)
-        }
-        return prev
-      })
-    }
-  }
 
   // Handle Zoom In from warning overlay
   const handleZoomInClick = () => {
@@ -499,13 +108,13 @@ export default function MapExplorer() {
 
   // Category definitions for rendering badges/filters
   const categories = [
-    { id: 'all', label: 'All', emoji: '🗺️' },
+    { id: 'all', label: 'All', emoji: '🌍' },
     { id: 'castle', label: 'Castles', emoji: '🏰' },
-    { id: 'ruins', label: 'Ruins', emoji: '🏚️' },
+    { id: 'ruins', label: 'Ruins', emoji: '🏛️' },
     { id: 'holy_site', label: 'Holy Sites', emoji: '⛪' },
     { id: 'monument', label: 'Monuments', emoji: '🗽' },
     { id: 'archaeological', label: 'Archaeology', emoji: '🏺' },
-    { id: 'relation', label: 'Complex Sites', emoji: '🌀' }
+    { id: 'relation', label: 'Complex Sites', emoji: '🗺️' }
   ]
 
   return (
@@ -579,7 +188,7 @@ export default function MapExplorer() {
                   geoRef.current?.locate(); 
                 }}
               >
-                🎯
+                📍
               </a>
             </div>
 
@@ -680,14 +289,7 @@ export default function MapExplorer() {
       <SiteDrawer
         site={selectedSite}
         isOpen={isDrawerOpen}
-        onClose={() => {
-          setIsDrawerOpen(false)
-          setSelectedSite(null)
-          setActivePolygon(null)
-          const url = new URL(window.location)
-          url.searchParams.delete('site')
-          window.history.pushState({}, '', url)
-        }}
+        onClose={closeDrawer}
         isLoading={drawerLoading}
         languageMode={languageMode}
         setLanguageMode={setLanguageMode}

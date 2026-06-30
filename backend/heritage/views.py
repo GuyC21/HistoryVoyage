@@ -1,49 +1,30 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.contrib.gis.geos import Point, Polygon
-from django.contrib.gis.measure import D
-from django.contrib.gis.db.models.functions import Distance
+from django.conf import settings
+
 from .models import HistoricalSite
 from .serializers import HistoricalSiteListSerializer, HistoricalSiteDetailSerializer
+from .services import translate_site_details
+from .selectors import get_sites_in_bbox, search_sites_by_text, get_sites_nearby
 
 class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
     """
     API endpoint that allows historical sites to be viewed and searched geographically.
     """
     queryset = HistoricalSite.objects.all()
+    pagination_class = None
     
     def get_serializer_class(self):
         if self.action == 'list':
             return HistoricalSiteListSerializer
         return HistoricalSiteDetailSerializer
 
-    pagination_class = None
-
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         
-        # If english_name is null/empty, translate on-the-fly and cache
-        if not instance.english_name:
-            try:
-                from deep_translator import GoogleTranslator
-                
-                # Translate name
-                translated_name = GoogleTranslator(source='auto', target='en').translate(instance.name)
-                if translated_name:
-                    instance.english_name = translated_name
-                
-                # Translate description if present
-                if instance.description:
-                    translated_desc = GoogleTranslator(source='auto', target='en').translate(instance.description)
-                    if translated_desc:
-                        instance.english_description = translated_desc
-                        
-                instance.save(update_fields=['english_name', 'english_description'])
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Failed to translate site {instance.id}: {e}")
+        # Translate on-the-fly via services layer if missing
+        instance = translate_site_details(instance)
                 
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
@@ -59,56 +40,19 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
         # Text search filter (global, ignores bounding box)
         search_query = self.request.query_params.get('search')
         if search_query:
-            from django.db.models import Q, Case, When, Value, IntegerField, ExpressionWrapper, BooleanField
-            
-            queryset = queryset.filter(
-                Q(name__icontains=search_query) | 
-                Q(english_name__icontains=search_query)
-            ).annotate(
-                search_rank=Case(
-                    When(Q(name__iexact=search_query) | Q(english_name__iexact=search_query), then=Value(3)),
-                    When(Q(name__istartswith=search_query) | Q(english_name__istartswith=search_query), then=Value(2)),
-                    default=Value(1),
-                    output_field=IntegerField()
-                ),
-                has_wikidata=ExpressionWrapper(
-                    ~Q(wikidata__isnull=True) & ~Q(wikidata=''),
-                    output_field=BooleanField()
-                )
-            ).order_by('-search_rank', '-has_wikidata', 'name')
-            
-            return queryset[:15]
+            return search_sites_by_text(queryset, search_query)
 
         # Bounding box filter (format: in_bbox=west,south,east,north)
         bbox_str = self.request.query_params.get('in_bbox')
         if bbox_str:
-            try:
-                west, south, east, north = map(float, bbox_str.split(','))
-                # Create a spatial Polygon from the bounding box
-                bbox_polygon = Polygon.from_bbox((west, south, east, north))
-                # __within spatial lookup checks if the point is inside the polygon bounding box
-                queryset = queryset.filter(location__within=bbox_polygon)
-                
-                # Annotate and prioritize sites with populated wikidata first (famous/significant sites)
-                from django.db.models import ExpressionWrapper, BooleanField, Q
-                queryset = queryset.annotate(
-                    has_wikidata=ExpressionWrapper(
-                        ~Q(wikidata__isnull=True) & ~Q(wikidata=''),
-                        output_field=BooleanField()
-                    )
-                ).order_by('-has_wikidata', 'id')
-                
-                # Limit size to prevent client/network performance issues
-                limit_str = self.request.query_params.get('limit')
-                limit = 500
-                if limit_str:
-                    try:
-                        limit = min(int(limit_str), 1000)
-                    except ValueError:
-                        pass
-                queryset = queryset[:limit]
-            except ValueError:
-                pass  # Ignore invalid parameter formats
+            limit_str = self.request.query_params.get('limit')
+            limit = 100
+            if limit_str:
+                try:
+                    limit = min(int(limit_str), 100)
+                except ValueError:
+                    pass
+            return get_sites_in_bbox(queryset, bbox_str, limit=limit)
                 
         return queryset
 
@@ -129,18 +73,7 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
             )
 
         try:
-            # Note: Point constructor takes (x, y) which is (longitude, latitude)
-            point = Point(float(lng), float(lat), srid=4326)
-            radius_m = float(radius_m)
-            
-            # __distance_lte filters sites within the distance threshold.
-            # We also annotate each site with its calculated distance and sort closest-first.
-            sites = HistoricalSite.objects.filter(
-                location__distance_lte=(point, D(m=radius_m))
-            ).annotate(
-                distance=Distance('location', point)
-            ).order_by('distance')
-
+            sites = get_sites_nearby(float(lat), float(lng), float(radius_m))
             serializer = self.get_serializer(sites, many=True)
             return Response(serializer.data)
         except ValueError:
