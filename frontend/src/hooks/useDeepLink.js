@@ -1,7 +1,18 @@
 import { useEffect, useRef } from 'react'
 import { backendApi } from '../services/api'
 
+/**
+ * useDeepLink Custom Hook
+ * 
+ * Inspects URL search parameters on page mount. If a `?site=<id>` parameter
+ * exists, it queries the backend API for coordinates and triggers map centering
+ * and detail drawer display automatically.
+ * 
+ * @param {L.Map|null} mapInstance - Active Leaflet map instance viewport.
+ * @param {Function} handleSiteClick - Selection callback to load site metadata in drawer.
+ */
 export const useDeepLink = (mapInstance, handleSiteClick) => {
+  /** @type {React.MutableRefObject<boolean>} Caches whether deep link lookup was already executed. */
   const deepLinkTriggered = useRef(false)
 
   useEffect(() => {

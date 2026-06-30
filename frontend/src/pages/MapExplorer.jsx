@@ -24,30 +24,87 @@ const userLocationIcon = L.divIcon({
 const MIN_ZOOM_GATE = 7
 
 /**
- * MapExplorer Page Component
- * Main application dashboard and viewport for the HistoryVoyage map.
- * Orchestrates calls to the local Django backend and fetches metadata/assets dynamically.
+ * MapExplorer Component
+ * 
+ * The root container page/dashboard for the HistoryVoyage client application.
+ * Manages Leaflet map state, user coordinates tracking, categories filtering,
+ * and slides out the details drawer. Coordinates state sharing between:
+ * - `HeaderCard` (Branding, filters, quick jump search bar)
+ * - `MapView` (Leaflet tile layers, site markers, boundary outline overlays)
+ * - `SiteDrawer` (Detailed historical descriptions, Wikipedia web views, road distance details)
+ * - `ZoomPrompt` (Visual shield prompt to zoom in for performance/data-density gate)
+ * - `GeolocationHandler` (Imperative locator targeting current device coords)
+ * 
+ * @returns {React.ReactElement} The dashboard layout view element.
  */
 export default function MapExplorer() {
+  /**
+   * @type {string|null} Bounding box CSV coordinates string ('west,south,east,north').
+   * Passed to useMapData hook to retrieve historical site nodes.
+   */
   const [bounds, setBounds] = useState(null)
+
+  /** @type {number} Current map zoom level. Governs whether markers render. */
   const [zoom, setZoom] = useState(7)
+
+  /** @type {Array<Object>} List of historical site features filtered by active category type. */
   const [filteredSites, setFilteredSites] = useState([])
   
-  // Active category filter: 'all' or one of the SITE_TYPES ('castle', 'ruins', etc.)
+  /** @type {string} Selected category type ID (e.g. 'castle', 'ruins', 'all'). */
   const [activeFilter, setActiveFilter] = useState('all')
   
-  // Translation preference: 'en' (English) or 'local' (Native Language)
+  /** @type {string} Current interface language ('en' for English translation, 'local'). */
   const [languageMode, setLanguageMode] = useState('en')
   
+  /** @type {Array<Array<number>>|null} Active site layout polygon coordinates. */
   const [activePolygon, setActivePolygon] = useState(null)
+
+  /** @type {L.Map|null} Active leaflet map reference instance. */
   const [mapInstance, setMapInstance] = useState(null)
+
+  /** @type {Array<number>|null} Resolved user device coordinates: [lat, lng]. */
   const [userLocation, setUserLocation] = useState(null)
+
+  /** @type {string|null} Active status text displayed in the toast notification. */
   const [toast, setToast] = useState(null)
+
+  /** @type {Object|null} Location center for circular radius searches: {lat, lng}. */
+  const [nearbyCenter, setNearbyCenter] = useState(null)
+
+  /** @type {number} Radius search limit boundary in meters. */
+  const [nearbyRadius, setNearbyRadius] = useState(5000)
   
+  /** @type {React.RefObject} Ref containing locate functions exposed by GeolocationHandler. */
   const geoRef = useRef(null)
 
+  /**
+   * Triggers a circular radius search around the current center coordinates of the map.
+   * 
+   * @param {number} radiusMeters - The distance radius in meters.
+   */
+  const handleTriggerNearby = (radiusMeters) => {
+    if (mapInstance) {
+      const center = mapInstance.getCenter()
+      setNearbyCenter({ lat: center.lat, lng: center.lng })
+      setNearbyRadius(radiusMeters)
+    } else {
+      setToast("Map is not loaded yet.")
+    }
+  }
+
+  /**
+   * Clears the active radius search criteria and resets map filters.
+   */
+  const handleClearNearby = () => {
+    setNearbyCenter(null)
+  }
+
   // Custom Hooks for business logic
-  const { sites, loading, error } = useMapData(bounds)
+  
+  // Fetches sites from backend depending on bounding box moves or active radius filters
+  const { sites, loading, error } = useMapData(bounds, nearbyCenter, nearbyRadius, activeFilter)
+  
+  // Controls individual historical site details retrieval, images loading, and drawer slides
   const { 
     selectedSite, 
     isDrawerOpen, 
@@ -56,6 +113,7 @@ export default function MapExplorer() {
     closeDrawer 
   } = useSiteDetails(mapInstance, setActivePolygon)
 
+  // Resolves direct links containing ?site=<id> URL search parameters
   useDeepLink(mapInstance, handleSiteClick)
 
   // Automatically clear toast messages after 5 seconds
@@ -70,6 +128,10 @@ export default function MapExplorer() {
   useEffect(() => {
     if (activeFilter === 'all') {
       setFilteredSites(sites)
+    } else if (activeFilter === 'relation') {
+      setFilteredSites(
+        sites.filter((site) => site.properties?.osmType === 'relation')
+      )
     } else {
       setFilteredSites(
         sites.filter((site) => site.properties?.site_type === activeFilter)
@@ -77,14 +139,21 @@ export default function MapExplorer() {
     }
   }, [sites, activeFilter])
 
-  // Handle Zoom In from warning overlay
+  /**
+   * Zooms the map view into the threshold level MIN_ZOOM_GATE.
+   */
   const handleZoomInClick = () => {
     if (mapInstance) {
       mapInstance.setZoom(MIN_ZOOM_GATE)
     }
   }
 
-  // Handle Quick Jump to key tourist destinations
+  /**
+   * Centers the viewport over specific coordinates.
+   * 
+   * @param {number} lat - Target latitude.
+   * @param {number} lng - Target longitude.
+   */
   const handleQuickJump = (lat, lng) => {
     if (mapInstance) {
       // Zoom into 12 which automatically clears the zoom gate (zoom >= 7) and fetches markers
@@ -92,7 +161,11 @@ export default function MapExplorer() {
     }
   }
 
-  // Handle selecting a site from search autocomplete suggestions
+  /**
+   * Centers map and triggers detail drawer when selecting a site suggestion.
+   * 
+   * @param {Object} siteFeature - The GeoJSON site feature selected.
+   */
   const handleSelectSite = (siteFeature) => {
     if (!siteFeature.geometry || !siteFeature.geometry.coordinates) return
     const [lng, lat] = siteFeature.geometry.coordinates
@@ -132,6 +205,9 @@ export default function MapExplorer() {
         onQuickJump={handleQuickJump}
         onLocateUser={() => geoRef.current?.locate()}
         onSelectSite={handleSelectSite}
+        onTriggerNearby={handleTriggerNearby}
+        onClearNearby={handleClearNearby}
+        nearbyCenter={nearbyCenter}
       />
 
       {/* Map loading spinner */}
@@ -259,6 +335,8 @@ export default function MapExplorer() {
             currentZoom={zoom}
             minZoomGate={MIN_ZOOM_GATE}
             activePolygon={activePolygon}
+            nearbyCenter={nearbyCenter}
+            nearbyRadius={nearbyRadius}
           />
 
           {/* Reusable geolocation logic component */}

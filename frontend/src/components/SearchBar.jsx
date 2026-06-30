@@ -9,21 +9,40 @@ import React, { useState, useEffect, useRef } from 'react'
  * @param {Function} props.onSelectSite - Callback when a site is selected: (siteFeature) => void
  */
 export default function SearchBar({ onSelectSite }) {
+  /** @type {string} Binding value for the input field. */
   const [query, setQuery] = useState('')
+
+  /** @type {Array<Object>} List of matched suggestions returned by the API. */
   const [suggestions, setSuggestions] = useState([])
+
+  /** @type {boolean} Visual load indicator. */
   const [loading, setLoading] = useState(false)
+
+  /** @type {boolean} Dropdown overlay open status. */
   const [isOpen, setIsOpen] = useState(false)
+
+  /** @type {number} The current keyboard highlighted active index in the dropdown list. */
   const [activeIndex, setActiveIndex] = useState(-1)
   
+  /** @type {React.RefObject} Ref pointing to the autocomplete container elements. */
   const containerRef = useRef(null)
+
+  /** @type {React.MutableRefObject<number|null>} Ref caching the debounce timer handle. */
   const debounceRef = useRef(null)
+
+  /** @type {React.MutableRefObject<AbortController|null>} Ref tracking active AJAX requests. */
   const abortControllerRef = useRef(null)
 
   const API_BASE = window.location.hostname === '127.0.0.1'
     ? 'http://127.0.0.1:8000'
     : 'http://localhost:8000'
 
-  // Category emoji helper
+  /**
+   * Helper utility returning matching emojis for category ID strings.
+   * 
+   * @param {string} siteType - Category code.
+   * @returns {string} The representative emoji.
+   */
   const getCategoryEmoji = (siteType) => {
     switch (siteType) {
       case 'castle': return '🏰'
@@ -54,7 +73,11 @@ export default function SearchBar({ onSelectSite }) {
     }
   }, [])
 
-  // Fetch suggestions with debounce
+  /**
+   * Queries autocomplete terms from the server, aborting pending operations.
+   * 
+   * @param {string} searchVal - The search text query input.
+   */
   const fetchSuggestions = (searchVal) => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()

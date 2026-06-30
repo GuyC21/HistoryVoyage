@@ -1,3 +1,5 @@
-from django.test import TestCase
+"""
+Unit and integration tests for the heritage application.
+"""
 
-# Create your tests here.
+from django.test import TestCase

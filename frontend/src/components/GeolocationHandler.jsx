@@ -13,16 +13,28 @@ import React, { useEffect, useImperativeHandle, forwardRef, useRef } from 'react
  * @param {React.Ref} ref - Exposes trigger methods `locate` and `locateOnMount` to the parent.
  */
 const GeolocationHandler = forwardRef(({ mapInstance, onToast, onLocationFound }, ref) => {
+  /** @type {React.MutableRefObject<Array<number>|null>} Caches the most recent coordinate resolution. */
   const lastLocationRef = useRef(null)
+
+  /** @type {React.MutableRefObject<boolean>} Tracks if viewport has flown to user coordinates on load. */
   const initialFlyDone = useRef(false)
+
+  /** @type {React.MutableRefObject<number|null>} Tracks the watchPosition process reference ID. */
   const watchIdRef = useRef(null)
   
-  // Bounding Box checks for Israel, Greece, Italy
+  /**
+   * Bounding Box checks for Israel, Greece, Italy.
+   * Restricts user geolocation triggers to active dataset boundaries.
+   * 
+   * @param {number} latitude - Target latitude to inspect.
+   * @param {number} longitude - Target longitude to inspect.
+   * @returns {boolean} True if coordinates fall within supported bounding boxes.
+   */
   const isSupported = (latitude, longitude) => {
     return (
-      (latitude >= 29.0 && latitude <= 33.5 && longitude >= 34.0 && longitude <= 36.5) ||
-      (latitude >= 34.0 && latitude <= 42.0 && longitude >= 19.0 && longitude <= 28.5) ||
-      (latitude >= 35.5 && latitude <= 47.5 && longitude >= 6.5 && longitude <= 18.5)
+      (latitude >= 29.0 && latitude <= 33.5 && longitude >= 34.0 && longitude <= 36.5) || // Israel BBox
+      (latitude >= 34.0 && latitude <= 42.0 && longitude >= 19.0 && longitude <= 28.5) || // Greece BBox
+      (latitude >= 35.5 && latitude <= 47.5 && longitude >= 6.5 && longitude <= 18.5)     // Italy BBox
     )
   }
 
@@ -32,6 +44,7 @@ const GeolocationHandler = forwardRef(({ mapInstance, onToast, onLocationFound }
       return
     }
 
+    // Set up continuous watchPosition tracking
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
         const { latitude, longitude } = position.coords

@@ -25,8 +25,16 @@ export default function SiteDrawer({
   setLanguageMode,
   userLocation
 }) {
+  /** @type {string} Unit selection: 'km' (kilometers) or 'mi' (miles). */
   const [distanceUnit, setDistanceUnit] = useState('km')
+
+  /**
+   * @type {Object|null} Resolved driving/air distance details.
+   * Format: { distance: number, isAir: boolean }.
+   */
   const [distanceData, setDistanceData] = useState(null)
+
+  /** @type {React.MutableRefObject<AbortController|null>} Ref tracking OSRM driving distance fetch operations. */
   const distanceAbortRef = useRef(null)
 
   useEffect(() => {

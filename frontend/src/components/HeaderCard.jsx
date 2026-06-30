@@ -31,8 +31,21 @@ export default function HeaderCard({
   categories,
   onQuickJump,
   onLocateUser,
-  onSelectSite
+  onSelectSite,
+  onTriggerNearby,
+  onClearNearby,
+  nearbyCenter
 }) {
+  /** @type {boolean} Governs the visibility of the radius input search widget. */
+  const [showRadiusForm, setShowRadiusForm] = useState(false)
+
+  /** @type {string} Text binding for the radius query distance field. Defaults to '5000' (meters). */
+  const [radiusInput, setRadiusInput] = useState('5000')
+
+  /**
+   * @type {boolean} Collapsed status of the header panel.
+   * Restores settings from localStorage to preserve UI configuration layout.
+   */
   const [isCollapsed, setIsCollapsed] = useState(() => {
     try {
       const saved = localStorage.getItem('history_voyage_header_collapsed')
@@ -42,6 +55,9 @@ export default function HeaderCard({
     }
   })
 
+  /**
+   * Toggles the collapse state of the control card panel, caching preference in localStorage.
+   */
   const toggleCollapse = () => {
     setIsCollapsed(prev => {
       const next = !prev
@@ -126,7 +142,66 @@ export default function HeaderCard({
             <button className="filter-btn" onClick={() => onQuickJump(37.9715, 23.7263)}>🏛️ Athens</button>
             <button className="filter-btn" onClick={() => onQuickJump(31.7767, 35.2227)}>🏰 Jerusalem</button>
             <button className="filter-btn" onClick={onLocateUser} title="Jump to my location">🎯 My Location</button>
+            <button 
+              className={`filter-btn ${showRadiusForm || nearbyCenter ? 'active' : ''}`} 
+              onClick={() => setShowRadiusForm(prev => !prev)}
+              title="Search historical sites in a radius around the current map center"
+            >
+              🔍 Find Nearby
+            </button>
           </div>
+
+          {/* Inline Radius Search Selector */}
+          {showRadiusForm && (
+            <div className="filters-container" style={{ marginTop: '8px', padding: '6px 8px', background: 'var(--border)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-h)' }}>Radius (m):</span>
+              <input
+                type="number"
+                value={radiusInput}
+                onChange={(e) => setRadiusInput(e.target.value)}
+                min="1"
+                style={{
+                  width: '80px',
+                  background: 'var(--bg-translucent)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '4px',
+                  padding: '2px 6px',
+                  color: 'var(--text-h)',
+                  fontSize: '12px'
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const r = parseFloat(radiusInput)
+                    if (!isNaN(r) && r > 0) {
+                      onTriggerNearby(r)
+                    }
+                  }
+                }}
+              />
+              <button 
+                className="filter-btn active" 
+                style={{ padding: '2px 8px' }}
+                onClick={() => {
+                  const r = parseFloat(radiusInput)
+                  if (!isNaN(r) && r > 0) {
+                    onTriggerNearby(r)
+                  }
+                }}
+              >
+                Go
+              </button>
+              <button 
+                className="filter-btn" 
+                style={{ padding: '2px 8px' }}
+                onClick={() => {
+                  setShowRadiusForm(false)
+                  onClearNearby()
+                }}
+              >
+                ❌ Clear
+              </button>
+            </div>
+          )}
 
           {/* Filters */}
           <div className="filters-container">

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
-import { TileLayer, Marker, Polygon, useMapEvents } from 'react-leaflet'
+import { TileLayer, Marker, Polygon, Circle, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 
 const iconCache = {}
@@ -155,8 +155,14 @@ export default function MapView({
   onZoomChange, 
   currentZoom, 
   minZoomGate,
-  activePolygon
+  activePolygon,
+  nearbyCenter,
+  nearbyRadius
 }) {
+  /**
+   * @type {boolean} Sensing system color scheme.
+   * Tracks whether light or dark tiles should render based on the OS style.
+   */
   const [isDarkMode, setIsDarkMode] = useState(
     window.matchMedia('(prefers-color-scheme: dark)').matches
   )
@@ -169,9 +175,11 @@ export default function MapView({
     return () => mediaQuery.removeEventListener('change', handleChange)
   }, [])
 
-  // CartoDB Tile Providers
+  // CartoDB Tile Providers (rendered as vector-styled raster map tiles)
   const darkTiles = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
   const lightTiles = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+  
+  /** @type {string} Attribution label required for OpenStreetMap and CartoDB usage guidelines. */
   const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
 
   return (
@@ -198,6 +206,21 @@ export default function MapView({
           }}
         />
       )}
+
+      {nearbyCenter && (
+        <Circle
+          center={[nearbyCenter.lat, nearbyCenter.lng]}
+          radius={nearbyRadius}
+          pathOptions={{
+            color: '#3b82f6', // Premium blue stroke
+            fillColor: '#3b82f6', // Premium blue fill
+            fillOpacity: 0.12,
+            weight: 2,
+            dashArray: '5, 5',
+            className: 'radius-search-circle'
+          }}
+        />
+      )}
       
       <MapEventsHandler 
         onBoundsChange={onBoundsChange} 
@@ -213,13 +236,13 @@ export default function MapView({
         const isSelected = selectedSite && selectedSite.id === site.id
         
         // We consider a site as having a boundary outline if its osmType is way or relation
-        const hasBoundary = site.properties.osmType === 'way' || site.properties.osmType === 'relation'
+        const hasBoundary = site.properties?.osmType === 'way' || site.properties?.osmType === 'relation'
 
         return (
           <Marker
             key={site.id}
             position={[lat, lng]}
-            icon={getMarkerIcon(site.properties.site_type, isSelected, hasBoundary)}
+            icon={getMarkerIcon(site.properties?.site_type, isSelected, hasBoundary)}
             eventHandlers={{
               click: () => {
                 // Return details as flat properties + geometry structure

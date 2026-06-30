@@ -1,5 +1,10 @@
 /**
- * Helper to determine local Wikipedia language code based on country
+ * Maps country name identifiers to their corresponding local Wikipedia sub-domain codes.
+ * 
+ * Supports Greece ('el'), Italy ('it'), and Israel ('he'), falling back to English ('en').
+ * 
+ * @param {string} country - The country name string.
+ * @returns {string} The Wikipedia language subdomain code.
  */
 export const getWikiLangCode = (country) => {
   if (!country) return 'en'
@@ -11,8 +16,18 @@ export const getWikiLangCode = (country) => {
 }
 
 /**
- * Validates if a Wikipedia search result is likely the site we are looking for
- * Uses a heuristic word intersection approach to reject highly generic or wrong matches.
+ * Validates whether a search result is likely matching the queried historical site name.
+ * 
+ * Employs a word-intersection heuristic:
+ * 1. Normalizes characters (lowercases, strips accents using NFD decomposition).
+ * 2. Matches exact substrings directly.
+ * 3. Filters out generic stop words ('castle', 'ruins', country names, etc.).
+ * 4. Verifies whether any key semantic words overlap.
+ * 
+ * @param {string} siteName - Target historical site name.
+ * @param {string} articleTitle - Wikipedia article title returned by search.
+ * @param {string} [country] - Physical country name to filter as a stop word.
+ * @returns {boolean} True if semantic matching constraints are met.
  */
 export const isValidSearchResult = (siteName, articleTitle, country) => {
   if (!siteName || !articleTitle) return false

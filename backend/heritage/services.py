@@ -1,3 +1,10 @@
+"""
+Services for the heritage application.
+
+Encapsulates the business logic layer, primarily handling on-the-fly translations
+of local database texts using external translation clients.
+"""
+
 import logging
 from deep_translator import GoogleTranslator
 from .models import HistoricalSite
@@ -6,8 +13,21 @@ logger = logging.getLogger(__name__)
 
 def translate_site_details(site: HistoricalSite) -> HistoricalSite:
     """
-    Translates the site's name and description into English if missing.
-    Returns the updated (and saved) HistoricalSite instance.
+    Translates a historical site's name and description into English if missing.
+
+    Connects to the Google Translation API via `deep_translator`. If translation
+    succeeds, the English fields (`english_name`, `english_description`) are populated
+    and updated in the database.
+
+    Args:
+        site (HistoricalSite): The HistoricalSite database record instance to translate.
+
+    Returns:
+        HistoricalSite: The updated (and database-saved) HistoricalSite instance.
+
+    Raises:
+        None: Suppresses external translation errors and logs exceptions via standard
+            logging, returning the unmodified model instance.
     """
     if site.english_name:
         return site

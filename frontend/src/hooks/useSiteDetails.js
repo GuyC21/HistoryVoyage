@@ -5,12 +5,39 @@ import { wikipediaApi } from '../services/wikipediaApi'
 import { getWikiLangCode } from '../utils/wikipediaHelpers'
 import L from 'leaflet'
 
+/**
+ * useSiteDetails Custom Hook
+ * 
+ * Manages the state and asynchronous resolution of detailed historical site metadata.
+ * Implements a multi-tiered fallback architecture to load localized text and assets:
+ * 1. Queries backend Django API for missing English properties and geometry outlines.
+ * 2. Fetches Wikidata entity fields (using Wikidata ID) to retrieve Commons images and site links.
+ * 3. Crawls Wikipedia API page abstracts for multilingual intro extracts.
+ * 4. Falls back to search heuristic matching if direct sitelinks are unavailable.
+ * 
+ * @param {L.Map|null} mapInstance - Leaflet map reference instance.
+ * @param {Function} setActivePolygon - Sets active boundary coordinates to overlay on map.
+ * @returns {Object} Site details state attributes and drawer controls.
+ */
 export const useSiteDetails = (mapInstance, setActivePolygon) => {
+  /** @type {Object|null} Properties of the currently focused historical site. */
   const [selectedSite, setSelectedSite] = useState(null)
+
+  /** @type {boolean} Visual open status for details sliding drawer. */
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+
+  /** @type {boolean} Loader skeleton visibility status. */
   const [drawerLoading, setDrawerLoading] = useState(false)
+
+  /** @type {React.MutableRefObject<AbortController|null>} Ref tracking active details resolution. */
   const drawerAbortRef = useRef(null)
 
+  /**
+   * Selection handler triggered when clicking a site marker or search recommendation.
+   * Runs the multi-tiered API resolution workflow.
+   * 
+   * @param {Object} siteDetails - Raw coordinate and identity parameters of target site.
+   */
   const handleSiteClick = async (siteDetails) => {
     setActivePolygon(null)
 

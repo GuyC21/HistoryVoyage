@@ -1,3 +1,7 @@
-from django.contrib import admin
+"""
+Admin configuration for the heritage application.
 
-# Register your models here.
+Registers database models with Django's administrative site interface.
+"""
+
+from django.contrib import admin

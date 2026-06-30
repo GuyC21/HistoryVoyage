@@ -1,6 +1,19 @@
 import { isValidSearchResult } from '../utils/wikipediaHelpers'
 
+/**
+ * wikipediaApi Service
+ * 
+ * Provides integration helper methods to fetch descriptions and visual assets from Wikipedia.
+ */
 export const wikipediaApi = {
+  /**
+   * Fetches intro extracts and thumbnail images for a known Wikipedia page title.
+   * 
+   * @param {string} title - The exact article title to retrieve.
+   * @param {string} lang - The Wikipedia sub-domain language code (e.g. 'en', 'he', 'it', 'el').
+   * @param {AbortController} [abortController] - Optional cancel token reference.
+   * @returns {Promise<Object|null>} Resolved page properties: { extract, thumbnail, title }, or null.
+   */
   fetchWikiContent: async (title, lang, abortController) => {
     if (!title) return null
     try {
@@ -23,6 +36,16 @@ export const wikipediaApi = {
     return null
   },
 
+  /**
+   * Performs an article search and filters results based on string intersection heuristics.
+   * 
+   * @param {string} query - The search query term.
+   * @param {string} lang - The Wikipedia sub-domain language code.
+   * @param {string} siteName - The name of the target site to cross-validate.
+   * @param {string} country - The country of the target site to cross-validate.
+   * @param {AbortController} [abortController] - Optional cancel token reference.
+   * @returns {Promise<Object|null>} Match result metadata: { extract, thumbnail, title }, or null.
+   */
   searchWikiContent: async (query, lang, siteName, country, abortController) => {
     if (!query) return null
     try {

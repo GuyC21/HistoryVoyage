@@ -1,16 +1,16 @@
 """
-WSGI config for config project.
+WSGI Config for the config project.
 
-It exposes the WSGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/6.0/howto/deployment/wsgi/
+Exposes the WSGI callable as a module-level variable named `application`
+for web servers like Gunicorn, uWSGI, or Mod_WSGI to communicate with Django.
 """
 
 import os
 
 from django.core.wsgi import get_wsgi_application
 
+# Bind settings module context to the config project settings.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
+# Expose WSGI callable interface.
 application = get_wsgi_application()
