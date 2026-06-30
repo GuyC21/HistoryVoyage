@@ -43,6 +43,7 @@ export default function MapExplorer() {
   const [languageMode, setLanguageMode] = useState('en')
   
   const [selectedSite, setSelectedSite] = useState(null)
+  const [activePolygon, setActivePolygon] = useState(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   
   const [loading, setLoading] = useState(false)
@@ -107,6 +108,10 @@ export default function MapExplorer() {
   useEffect(() => {
     if (activeFilter === 'all') {
       setFilteredSites(sites)
+    } else if (activeFilter === 'relation') {
+      setFilteredSites(
+        sites.filter((site) => site.properties.osmType === 'relation')
+      )
     } else {
       setFilteredSites(
         sites.filter((site) => site.properties.site_type === activeFilter)
@@ -123,14 +128,20 @@ export default function MapExplorer() {
     }
   }, [])
 
-  // Handle marker click (triggers dynamic translation/caching and Wikidata asset fetch)
+  // Handle marker click (triggers dynamic translation/caching, Wikidata assets, and boundary coordinates fetch)
   const handleSiteClick = async (siteDetails) => {
-    // Cancel any in-flight translation queries to prevent race conditions
+    // Reset previous active polygon boundary
+    setActivePolygon(null)
+
+    // Cancel any in-flight translation/geometry queries to prevent race conditions
     if (drawerAbortRef.current) {
       drawerAbortRef.current.abort()
     }
 
     const hasEnglishInDetails = !!siteDetails.englishName
+    
+    // We fetch details from our backend if the English translation is missing OR if we need to load its boundary coordinates
+    const needsBackendFetch = !hasEnglishInDetails || (siteDetails.osmType === 'relation' || siteDetails.osmType === 'way')
 
     setSelectedSite({
       ...siteDetails,
@@ -140,8 +151,8 @@ export default function MapExplorer() {
     })
     setIsDrawerOpen(true)
 
-    // If we already have the English translation, and we don't have a Wikidata ID to fetch an image for, exit early
-    if (hasEnglishInDetails && !siteDetails.wikidata) {
+    // If we already have the translation, don't need a boundary, and don't need to fetch Wikidata assets, exit early
+    if (hasEnglishInDetails && !needsBackendFetch && !siteDetails.wikidata) {
       return
     }
 
@@ -156,8 +167,8 @@ export default function MapExplorer() {
 
       const promises = []
 
-      // 1. Fetch from our backend retrieve endpoint if translations are missing to trigger on-the-fly translation & caching
-      if (!hasEnglishInDetails) {
+      // 1. Fetch from our backend retrieve endpoint (loads translation on-the-fly and pulls boundary coordinates from DB)
+      if (needsBackendFetch) {
         promises.push(
           fetch(`${API_BASE}/api/sites/${siteDetails.id}/`, { signal: controller.signal })
             .then((res) => {
@@ -168,10 +179,19 @@ export default function MapExplorer() {
               const props = data.properties || {}
               backendEnglishName = props.englishName || null
               backendEnglishDescription = props.englishDescription || null
+              
+              if (props.boundary) {
+                setSelectedSite((prev) => {
+                  if (prev && prev.id === siteDetails.id) {
+                    setActivePolygon(props.boundary)
+                  }
+                  return prev
+                })
+              }
             })
             .catch((err) => {
               if (err.name !== 'AbortError') {
-                console.error('Backend translation fetch failed:', err)
+                console.error('Backend retrieve failed:', err)
               }
             })
         )
@@ -264,6 +284,20 @@ export default function MapExplorer() {
     }
   }
 
+  // Handle selecting a site from search autocomplete suggestions
+  const handleSelectSite = (siteFeature) => {
+    if (!siteFeature.geometry || !siteFeature.geometry.coordinates) return
+    const [lng, lat] = siteFeature.geometry.coordinates
+    if (mapInstance) {
+      mapInstance.setView([lat, lng], 15) // Zoom in closely to show the specific site
+    }
+    handleSiteClick({
+      id: siteFeature.id,
+      ...siteFeature.properties,
+      coordinates: [lat, lng]
+    })
+  }
+
   // Category definitions for rendering badges/filters
   const categories = [
     { id: 'all', label: 'All', emoji: '🗺️' },
@@ -271,7 +305,8 @@ export default function MapExplorer() {
     { id: 'ruins', label: 'Ruins', emoji: '🏚️' },
     { id: 'holy_site', label: 'Holy Sites', emoji: '⛪' },
     { id: 'monument', label: 'Monuments', emoji: '🗽' },
-    { id: 'archaeological', label: 'Archaeology', emoji: '🏺' }
+    { id: 'archaeological', label: 'Archaeology', emoji: '🏺' },
+    { id: 'relation', label: 'Complex Sites', emoji: '🌀' }
   ]
 
   return (
@@ -288,6 +323,7 @@ export default function MapExplorer() {
         categories={categories}
         onQuickJump={handleQuickJump}
         onLocateUser={() => geoRef.current?.locate()}
+        onSelectSite={handleSelectSite}
       />
 
       {/* Map loading spinner */}
@@ -311,7 +347,7 @@ export default function MapExplorer() {
           center={[38.5, 20.0]} // Centered on Mediterranean
           zoom={7}
           minZoom={8}
-          maxZoom={18}
+          maxZoom={19}
           className="map-element"
           zoomControl={false}
           ref={setMapInstance}
@@ -414,6 +450,7 @@ export default function MapExplorer() {
             onZoomChange={setZoom}
             currentZoom={zoom}
             minZoomGate={MIN_ZOOM_GATE}
+            activePolygon={activePolygon}
           />
 
           {/* Reusable geolocation logic component */}
@@ -447,6 +484,7 @@ export default function MapExplorer() {
         onClose={() => {
           setIsDrawerOpen(false)
           setSelectedSite(null)
+          setActivePolygon(null)
         }}
         isLoading={drawerLoading}
         languageMode={languageMode}

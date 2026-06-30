@@ -5,14 +5,18 @@ from django.contrib.gis.geos import Point, Polygon
 from django.contrib.gis.measure import D
 from django.contrib.gis.db.models.functions import Distance
 from .models import HistoricalSite
-from .serializers import HistoricalSiteSerializer
+from .serializers import HistoricalSiteListSerializer, HistoricalSiteDetailSerializer
 
 class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
     """
     API endpoint that allows historical sites to be viewed and searched geographically.
     """
     queryset = HistoricalSite.objects.all()
-    serializer_class = HistoricalSiteSerializer
+    
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return HistoricalSiteListSerializer
+        return HistoricalSiteDetailSerializer
 
     pagination_class = None
 
@@ -47,6 +51,34 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
         
+        # Filter by osm_type (e.g. osm_type=relation)
+        osm_type = self.request.query_params.get('osm_type')
+        if osm_type:
+            queryset = queryset.filter(osm_type=osm_type)
+            
+        # Text search filter (global, ignores bounding box)
+        search_query = self.request.query_params.get('search')
+        if search_query:
+            from django.db.models import Q, Case, When, Value, IntegerField, ExpressionWrapper, BooleanField
+            
+            queryset = queryset.filter(
+                Q(name__icontains=search_query) | 
+                Q(english_name__icontains=search_query)
+            ).annotate(
+                search_rank=Case(
+                    When(Q(name__iexact=search_query) | Q(english_name__iexact=search_query), then=Value(3)),
+                    When(Q(name__istartswith=search_query) | Q(english_name__istartswith=search_query), then=Value(2)),
+                    default=Value(1),
+                    output_field=IntegerField()
+                ),
+                has_wikidata=ExpressionWrapper(
+                    ~Q(wikidata__isnull=True) & ~Q(wikidata=''),
+                    output_field=BooleanField()
+                )
+            ).order_by('-search_rank', '-has_wikidata', 'name')
+            
+            return queryset[:15]
+
         # Bounding box filter (format: in_bbox=west,south,east,north)
         bbox_str = self.request.query_params.get('in_bbox')
         if bbox_str:

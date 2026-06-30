@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import SearchBar from './SearchBar'
 
 /**
  * HeaderCard Component
@@ -17,6 +18,7 @@ import React, { useState } from 'react'
  * @param {Array<Object>} props.categories - Array of selectable categories (id, label, emoji).
  * @param {Function} props.onQuickJump - Callback to zoom/pan the map coordinates: (lat, lng) => void.
  * @param {Function} props.onLocateUser - Callback to trigger user geolocation and center the map on their location.
+ * @param {Function} props.onSelectSite - Callback when a site is selected from the search bar.
  */
 export default function HeaderCard({
   languageMode,
@@ -28,7 +30,8 @@ export default function HeaderCard({
   setActiveFilter,
   categories,
   onQuickJump,
-  onLocateUser
+  onLocateUser,
+  onSelectSite
 }) {
   const [isCollapsed, setIsCollapsed] = useState(() => {
     try {
@@ -100,6 +103,8 @@ export default function HeaderCard({
       {!isCollapsed && (
         <>
           <p>Explore ancient civilisations across Israel, Greece, and Italy.</p>
+          
+          <SearchBar onSelectSite={onSelectSite} />
           
           <div className="stats-bar">
             <span className="stat-badge">

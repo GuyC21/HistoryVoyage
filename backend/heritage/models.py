@@ -18,6 +18,9 @@ class HistoricalSite(models.Model):
     wikidata = models.CharField(max_length=100, blank=True, null=True)
     english_name = models.CharField(max_length=255, blank=True, null=True)
     english_description = models.TextField(blank=True, null=True)
+    osm_type = models.CharField(max_length=20, blank=True, null=True)
+    osm_id = models.BigIntegerField(blank=True, null=True)
+    boundary = models.JSONField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.name} ({self.get_site_type_display()} - {self.country})"

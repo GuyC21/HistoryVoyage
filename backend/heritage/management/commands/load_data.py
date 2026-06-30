@@ -77,55 +77,94 @@ class Command(BaseCommand):
     help = 'Harvest historical and holy sites from OpenStreetMap (via Overpass API) and seed the database'
 
     def handle(self, *args, **options):
-        # Target countries in specified order: Israel, West Bank, Greece, Italy
+        # Target countries/regions: Israel uses a bounding box to cover all disputed and Old City areas.
         countries = [
-            {'name': 'Israel', 'code': 'IL'},
-            {'name': 'West Bank', 'code': 'PS', 'is_west_bank': True},
+            {'name': 'Israel', 'bbox': '29.4,34.0,33.5,36.0'},
             {'name': 'Greece', 'code': 'GR'},
             {'name': 'Italy', 'code': 'IT'},
         ]
 
-        overpass_url = 'https://overpass-api.de/api/interpreter'
+        overpass_endpoints = [
+            'https://overpass-api.de/api/interpreter',
+            'https://overpass.kumi.systems/api/interpreter',
+            'https://overpass.osm.ch/api/interpreter',
+        ]
 
         for country in countries:
-            db_country_name = 'Israel' if country.get('is_west_bank') else country['name']
+            db_country_name = country['name']
             self.stdout.write(self.style.WARNING(f"\n---> Starting harvest for {country['name']} (saving to country: {db_country_name})..."))
             
-            # Construct the Overpass QL query
-            # We filter for nodes and ways with a name tag in the search area
-            # We fetch historic items (including expanded values) and museum attractions
+            # Define specific tag sets for different element types to optimize query times.
+            node_tags = "castle|ruins|monument|monastery|tomb|archaeological_site|fortress|fort|city_gate|battlefield|archaeological|ruin|tower|temple|heritage|memorial|manor"
+            relation_tags = "castle|ruins|monument|monastery|tomb|archaeological_site|fortress|fort|city_gate|battlefield|archaeological|ruin|tower|temple|heritage|memorial|manor|city_wall|wall"
+            
+            # Ways scan: include 'yes' and 'wall' for Israel, and 'city_wall' and 'wall' for Greece/Italy.
+            if country['name'] == 'Israel':
+                way_tags = "castle|ruins|monument|monastery|tomb|archaeological_site|fortress|fort|city_gate|battlefield|archaeological|ruin|yes|wall|city_wall|tower|temple|heritage|memorial|manor"
+            else:
+                way_tags = "castle|ruins|monument|monastery|tomb|archaeological_site|fortress|fort|city_gate|battlefield|archaeological|ruin|city_wall|wall|tower|temple|heritage|memorial|manor"
+
+            # Construct the Overpass QL query dynamically based on whether bbox or area code is used
+            if 'bbox' in country:
+                area_filter = f"({country['bbox']})"
+                query_prefix = ""
+            else:
+                area_filter = "(area.searchArea)"
+                query_prefix = f'area["ISO3166-1"="{country["code"]}"]->.searchArea;'
+
             query = f"""
             [out:json][timeout:300];
-            area["ISO3166-1"="{country['code']}"]->.searchArea;
+            {query_prefix}
             (
-              // Castles, ruins, monuments, monasteries, tombs, archaeological sites, forts
-              node["historic"~"castle|ruins|monument|monastery|tomb|archaeological_site|fortress|fort|city_gate|battlefield|archaeological|ruin"]["name"](area.searchArea);
-              way["historic"~"castle|ruins|monument|monastery|tomb|archaeological_site|fortress|fort|city_gate|battlefield|archaeological|ruin"]["name"](area.searchArea);
+              // Castles, ruins, monuments, monasteries, tombs, archaeological sites, forts, and expanded types
+              node["historic"~"{node_tags}"]["name"]{area_filter};
+              way["historic"~"{way_tags}"]["name"]{area_filter};
+              relation["historic"~"{relation_tags}"]["name"]{area_filter};
               
               // Places of worship marked as historic
-              node["amenity"="place_of_worship"]["historic"]["name"](area.searchArea);
-              way["amenity"="place_of_worship"]["historic"]["name"](area.searchArea);
+              node["amenity"="place_of_worship"]["historic"]["name"]{area_filter};
+              way["amenity"="place_of_worship"]["historic"]["name"]{area_filter};
+              relation["amenity"="place_of_worship"]["historic"]["name"]{area_filter};
+              
+              // Places of worship with a Wikidata ID (famous holy sites like the Western Wall, major temples, churches, mosques)
+              node["amenity"="place_of_worship"]["wikidata"]["name"]{area_filter};
+              way["amenity"="place_of_worship"]["wikidata"]["name"]{area_filter};
+              relation["amenity"="place_of_worship"]["wikidata"]["name"]{area_filter};
               
               // Museums (which might be Crusader citadels, ruins or ancient structures)
-              node["tourism"="museum"]["name"](area.searchArea);
-              way["tourism"="museum"]["name"](area.searchArea);
+              node["tourism"="museum"]["name"]{area_filter};
+              way["tourism"="museum"]["name"]{area_filter};
+              relation["tourism"="museum"]["name"]{area_filter};
+              
+              // Major tourist attractions with a Wikidata ID (famous landmarks like the Acropolis or Colosseum)
+              node["tourism"="attraction"]["wikidata"]["name"]{area_filter};
+              way["tourism"="attraction"]["wikidata"]["name"]{area_filter};
+              relation["tourism"="attraction"]["wikidata"]["name"]{area_filter};
+              
+              // Protected historical boundaries with a Wikidata ID (archaeological parks, historic zones)
+              node["boundary"~"protected_area|historical"]["wikidata"]["name"]{area_filter};
+              way["boundary"~"protected_area|historical"]["wikidata"]["name"]{area_filter};
+              relation["boundary"~"protected_area|historical"]["wikidata"]["name"]{area_filter};
             );
-            out center;
+            out geom;
             """
             
             # Send POST request using built-in urllib
             data = urllib.parse.urlencode({'data': query}).encode('utf-8')
-            req = urllib.request.Request(overpass_url, data=data, headers={'User-Agent': 'GeospatialHeritagePlanner/1.0'})
             
             try:
                 max_retries = 3
                 osm_data = None
                 
                 for attempt in range(1, max_retries + 1):
+                    # Rotate between endpoints on retry
+                    endpoint = overpass_endpoints[(attempt - 1) % len(overpass_endpoints)]
+                    req = urllib.request.Request(endpoint, data=data, headers={'User-Agent': 'GeospatialHeritagePlanner/1.0'})
+                    
                     try:
-                        self.stdout.write(f"Fetching data from Overpass API for {country['name']} (Attempt {attempt}/{max_retries})...")
+                        self.stdout.write(f"Fetching data from Overpass API for {country['name']} (Attempt {attempt}/{max_retries} via {endpoint})...")
                         start_time = time.time()
-                        with urllib.request.urlopen(req) as response:
+                        with urllib.request.urlopen(req, timeout=360) as response:
                             raw_data = response.read().decode('utf-8')
                             osm_data = json.loads(raw_data)
                         
@@ -186,23 +225,30 @@ class Command(BaseCommand):
                     if not name:
                         continue
 
-                    if country.get('is_west_bank') and not is_jewish_israeli_heritage(name, tags):
-                        continue
-
                     # Filter out modern museums (e.g. art galleries, science centers)
                     tourism = tags.get('tourism', '')
                     if tourism == 'museum' and not is_historical_museum(name, tags):
                         continue
 
-                    # Get coordinates depending on element type
+                    # Get coordinates depending on element type.
+                    # For nodes, lat and lon are present at the root level.
+                    # For ways and relations, we calculate the centroid dynamically from their member/geometry coordinates.
                     lat = el.get('lat')
                     lon = el.get('lon')
                     
-                    # If it's a way/relation with center geometry from "out center;"
                     if not lat or not lon:
-                        center = el.get('center', {})
-                        lat = center.get('lat')
-                        lon = center.get('lon')
+                        osm_type = el.get('type')
+                        if osm_type == 'way' and 'geometry' in el and el['geometry']:
+                            lat = sum(pt['lat'] for pt in el['geometry']) / len(el['geometry'])
+                            lon = sum(pt['lon'] for pt in el['geometry']) / len(el['geometry'])
+                        elif osm_type == 'relation' and 'members' in el:
+                            pts = []
+                            for m in el['members']:
+                                if m.get('type') == 'way' and 'geometry' in m:
+                                    pts.extend(m['geometry'])
+                            if pts:
+                                lat = sum(pt['lat'] for pt in pts) / len(pts)
+                                lon = sum(pt['lon'] for pt in pts) / len(pts)
 
                     if not lat or not lon:
                         continue
@@ -217,34 +263,60 @@ class Command(BaseCommand):
                         site_type = 'ruins'
                     elif historic == 'monument':
                         site_type = 'monument'
-                    elif historic in ['monastery', 'tomb'] or amenity == 'place_of_worship':
+                    elif historic in ['monastery', 'tomb', 'temple'] or amenity == 'place_of_worship':
                         site_type = 'holy_site'
                     elif historic == 'archaeological_site':
                         site_type = 'archaeological'
                     else:
-                        # Map historical museums based on keywords
-                        if tourism == 'museum':
-                            name_lower = name.lower()
-                            if any(k in name_lower for k in ['castle', 'fort', 'fortress', 'citadel', 'מצודה', 'מבצר', 'castello', 'fortezza', 'κάστρο', 'φρούριο', 'אבירים', 'knights']):
-                                site_type = 'castle'
-                            elif any(k in name_lower for k in ['ruin', 'rovine', 'ερείπια', 'חורבת']):
-                                site_type = 'ruins'
-                            elif any(k in name_lower for k in ['monument', 'tower', 'gate', 'מגדל', 'שער', 'torre', 'porta', 'πύργος', 'πύλη']):
-                                site_type = 'monument'
-                            elif any(k in name_lower for k in ['monastery', 'tomb', 'temple', 'holy', 'church', 'mosque', 'synagogue', 'מנזר', 'קבר', 'היכל', 'monastero', 'tomba', 'tempio', 'μοναστήρι', 'τάφος', 'ναός']):
-                                site_type = 'holy_site'
-                            else:
-                                site_type = 'archaeological'
+                        # Fallback keyword classifier for other historic tags (yes, wall, tower, heritage, etc.) and museums
+                        name_lower = name.lower()
+                        if any(k in name_lower for k in ['castle', 'fort', 'fortress', 'citadel', 'מצודה', 'מבצר', 'castello', 'fortezza', 'κάστρο', 'φρούριο', 'אבירים', 'knights', 'manor']):
+                            site_type = 'castle'
+                        elif any(k in name_lower for k in ['ruin', 'rovine', 'ερείπια', 'חורבת']):
+                            site_type = 'ruins'
+                        elif any(k in name_lower for k in ['monument', 'tower', 'gate', 'מגדל', 'שער', 'torre', 'porta', 'πύργος', 'πύλη', 'wall', 'חומות', 'mura', 'memorial']):
+                            site_type = 'monument'
+                        elif any(k in name_lower for k in ['monastery', 'tomb', 'temple', 'holy', 'church', 'mosque', 'synagogue', 'מנזר', 'קבר', 'היכל', 'monastero', 'tomba', 'tempio', 'μοναστήρι', 'τάφος', 'ναός', 'western wall', 'הכותל']):
+                            site_type = 'holy_site'
+                        elif any(k in name_lower for k in ['archaeological', 'archeological', 'excavation', 'scavi', 'αρχαιολογικός', 'עתיקות', 'ארכאולוגי', 'acropolis', 'akropolis', 'acropoli']):
+                            site_type = 'archaeological'
                         else:
-                            site_type = 'other'
+                            # Let's map specific historic tag fallbacks
+                            if historic == 'tower':
+                                site_type = 'monument'
+                            elif historic == 'temple':
+                                site_type = 'holy_site'
+                            elif historic == 'manor':
+                                site_type = 'castle'
+                            elif historic == 'memorial':
+                                site_type = 'monument'
+                            else:
+                                site_type = 'other'
 
                     # Extract other metadata
                     wikidata = tags.get('wikidata')
                     description = tags.get('description') or tags.get('note') or tags.get('comment')
+                    osm_type = el.get('type')
+                    osm_id = el.get('id')
                     
+                    # Extract boundary coordinates for ways and relations
+                    boundary = None
+                    if osm_type == 'way':
+                        if 'geometry' in el:
+                            boundary = [[[pt['lat'], pt['lon']] for pt in el['geometry']]]
+                    elif osm_type == 'relation':
+                        if 'members' in el:
+                            paths = []
+                            for member in el['members']:
+                                if member.get('type') == 'way' and 'geometry' in member and member.get('role') != 'inner':
+                                    paths.append([[pt['lat'], pt['lon']] for pt in member['geometry']])
+                            if paths:
+                                boundary = paths
+
                     # Generate lookup key
                     key = (name.lower(), round(float(lon), 6), round(float(lat), 6))
                     
+                    # Deduplicate and check matches
                     site_match = lookup.get(key)
                     
                     if not site_match:
@@ -256,7 +328,10 @@ class Command(BaseCommand):
                             site_type=site_type,
                             location=location,
                             wikidata=wikidata,
-                            description=description
+                            description=description,
+                            osm_type=osm_type,
+                            osm_id=osm_id,
+                            boundary=boundary
                         ))
                         added_count += 1
                     else:
@@ -271,6 +346,15 @@ class Command(BaseCommand):
                         if description and site_match.description != description:
                             site_match.description = description
                             changed = True
+                        if osm_type and site_match.osm_type != osm_type:
+                            site_match.osm_type = osm_type
+                            changed = True
+                        if osm_id and site_match.osm_id != osm_id:
+                            site_match.osm_id = osm_id
+                            changed = True
+                        if boundary and site_match.boundary != boundary:
+                            site_match.boundary = boundary
+                            changed = True
                         
                         if changed:
                             to_update.append(site_match)
@@ -282,7 +366,7 @@ class Command(BaseCommand):
                 if to_create:
                     HistoricalSite.objects.bulk_create(to_create, batch_size=1000)
                 if to_update:
-                    HistoricalSite.objects.bulk_update(to_update, ['site_type', 'wikidata', 'description'], batch_size=1000)
+                    HistoricalSite.objects.bulk_update(to_update, ['site_type', 'wikidata', 'description', 'osm_type', 'osm_id', 'boundary'], batch_size=1000)
 
                 self.stdout.write(self.style.SUCCESS(
                     f"Finished {country['name']}: {added_count} sites added, {updated_count} sites updated."

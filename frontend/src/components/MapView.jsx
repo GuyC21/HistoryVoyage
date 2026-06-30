@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
-import { TileLayer, Marker, useMapEvents } from 'react-leaflet'
+import { TileLayer, Marker, Polygon, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 
 /**
@@ -10,7 +10,7 @@ import L from 'leaflet'
  * @param {boolean} isSelected - Whether the marker pin is currently selected.
  * @returns {L.DivIcon} Leaflet DivIcon instance.
  */
-const getMarkerIcon = (siteType, isSelected) => {
+const getMarkerIcon = (siteType, isSelected, hasBoundary) => {
   let color = 'var(--color-other)'
   let iconSvg = ''
 
@@ -40,7 +40,7 @@ const getMarkerIcon = (siteType, isSelected) => {
   }
 
   const html = `
-    <div class="custom-pin ${isSelected ? 'selected' : ''}" style="--marker-color: ${color}">
+    <div class="custom-pin ${isSelected ? 'selected' : ''} ${hasBoundary ? 'has-boundary' : ''}" style="--marker-color: ${color}">
       ${iconSvg}
     </div>
   `
@@ -135,6 +135,7 @@ function MapEventsHandler({ onBoundsChange, onZoomChange, minZoomGate }) {
  * @param {Function} props.onZoomChange - Callback indicating viewport zoom changes.
  * @param {number} props.currentZoom - Current map viewport zoom level.
  * @param {number} props.minZoomGate - Zoom limit gate beneath which markers are hidden.
+ * @param {Array|null} props.activePolygon - Selected site boundary polygon paths to render.
  */
 export default function MapView({ 
   sites, 
@@ -143,7 +144,8 @@ export default function MapView({
   onBoundsChange, 
   onZoomChange, 
   currentZoom, 
-  minZoomGate 
+  minZoomGate,
+  activePolygon
 }) {
   const [isDarkMode, setIsDarkMode] = useState(
     window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -168,6 +170,22 @@ export default function MapView({
         url={isDarkMode ? darkTiles : lightTiles}
         attribution={attribution}
       />
+
+      {activePolygon && (
+        <Polygon
+          positions={activePolygon}
+          pathOptions={{
+            color: '#a78bfa', // Light violet border glow
+            fillColor: '#8b5cf6', // Indigo/violet fill
+            fillOpacity: 0.2,
+            weight: 3.5,
+            dashArray: '6, 6', // Elegant blueprint dashed border
+            lineCap: 'round',
+            lineJoin: 'round',
+            className: 'glowing-polygon-path'
+          }}
+        />
+      )}
       
       <MapEventsHandler 
         onBoundsChange={onBoundsChange} 
@@ -181,12 +199,15 @@ export default function MapView({
         if (!site.geometry || !site.geometry.coordinates) return null
         const [lng, lat] = site.geometry.coordinates
         const isSelected = selectedSite && selectedSite.id === site.id
+        
+        // We consider a site as having a boundary outline if its osmType is way or relation
+        const hasBoundary = site.properties.osmType === 'way' || site.properties.osmType === 'relation'
 
         return (
           <Marker
             key={site.id}
             position={[lat, lng]}
-            icon={getMarkerIcon(site.properties.site_type, isSelected)}
+            icon={getMarkerIcon(site.properties.site_type, isSelected, hasBoundary)}
             eventHandlers={{
               click: () => {
                 // Return details as flat properties + geometry structure
