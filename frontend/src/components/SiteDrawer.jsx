@@ -229,16 +229,37 @@ export default function SiteDrawer({
             )}
           </div>
 
-          {site.wikidata && (
-            <a 
-              href={`https://www.wikidata.org/wiki/${site.wikidata}`} 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="wikipedia-btn"
-            >
-              📚 Explore on Wikidata
-            </a>
-          )}
+          {(() => {
+            const wikiUrl = languageMode === 'en' 
+              ? (site.wikiUrlEn || site.wikiUrlLocal) 
+              : (site.wikiUrlLocal || site.wikiUrlEn)
+            
+            if (wikiUrl) {
+              return (
+                <a 
+                  href={wikiUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="wikipedia-btn"
+                >
+                  📚 Explore on Wikipedia
+                </a>
+              )
+            }
+            if (site.wikidata) {
+              return (
+                <a 
+                  href={`https://www.wikidata.org/wiki/${site.wikidata}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="wikipedia-btn"
+                >
+                  📚 Explore on Wikidata
+                </a>
+              )
+            }
+            return null
+          })()}
         </div>
       ) : (
         <p>Select a historical site to view details.</p>

@@ -23,6 +23,43 @@ const API_BASE = window.location.hostname === '127.0.0.1'
   : 'http://localhost:8000'
 const MIN_ZOOM_GATE = 7
 
+const getWikiLangCode = (country) => {
+  if (!country) return 'en'
+  const c = country.toLowerCase()
+  if (c.includes('greece') || c.includes('gr')) return 'el'
+  if (c.includes('italy') || c.includes('it')) return 'it'
+  if (c.includes('israel') || c.includes('il')) return 'he'
+  return 'en'
+}
+
+// Validates if a Wikipedia search result is likely the site we are looking for
+const isValidSearchResult = (siteName, articleTitle, country) => {
+  if (!siteName || !articleTitle) return false
+  
+  // Normalize by making lowercase, removing accents and non-alphanumeric characters
+  const normalize = (str) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\p{L}\p{N}\s]/gu, "")
+  
+  const name1 = normalize(siteName)
+  const name2 = normalize(articleTitle)
+  const countryName = country ? normalize(country) : ''
+
+  // Direct substring match is a strong signal
+  if (name1.includes(name2) || name2.includes(name1)) return true
+
+  // Generic words to ignore when comparing overlap
+  const stopWords = new Set(['the', 'of', 'in', 'and', 'at', 'on', 'for', 'a', 'an', 'fort', 'castle', 'temple', 'ruins', 'ancient', 'site', 'church', 'monastery', 'national', 'park', countryName])
+  
+  const words1 = name1.split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w))
+  const words2 = name2.split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w))
+
+  // If there are meaningful words, check if there's any intersection
+  if (words1.length > 0) {
+    return words1.some(w => words2.includes(w))
+  }
+  
+  return false
+}
+
 /**
  * MapExplorer Page Component
  * Main application dashboard and viewport for the HistoryVoyage map.
@@ -202,7 +239,10 @@ export default function MapExplorer() {
     try {
       let backendEnglishName = siteDetails.englishName || null
       let backendEnglishDescription = siteDetails.englishDescription || null
+      let backendLocalDescription = siteDetails.description || null
       let wikidataImageUrl = null
+      let wikiUrlEn = null
+      let wikiUrlLocal = null
 
       const promises = []
 
@@ -217,7 +257,9 @@ export default function MapExplorer() {
             .then((data) => {
               const props = data.properties || {}
               backendEnglishName = props.englishName || null
-              backendEnglishDescription = props.englishDescription || null
+              // Backend might have a description, prefer it if it exists
+              if (props.englishDescription) backendEnglishDescription = props.englishDescription
+              if (props.description) backendLocalDescription = props.description
               
               if (props.boundary) {
                 setSelectedSite((prev) => {
@@ -249,44 +291,146 @@ export default function MapExplorer() {
         )
       }
 
-      // 2. Fetch from Wikidata if wikidata ID exists (for image assets and fallback translation)
-      if (siteDetails.wikidata) {
-        promises.push(
-          fetch(
-            `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${siteDetails.wikidata}&props=labels|descriptions|claims&languages=en&format=json&origin=*`,
-            { signal: controller.signal }
-          )
-            .then((res) => {
-              if (res.ok) return res.json()
-              throw new Error('Wikidata fetch failed')
-            })
-            .then((data) => {
-              const entity = data.entities?.[siteDetails.wikidata]
-              
-              // Extract image URL from P18 claim if present
-              if (entity?.claims?.P18?.[0]?.mainsnak?.datavalue?.value) {
-                const imageName = entity.claims.P18[0].mainsnak.datavalue.value
-                wikidataImageUrl = `https://commons.wikimedia.org/w/index.php?title=Special:FilePath/${encodeURIComponent(imageName)}&width=600`
-              }
-
-              // Fallback translation values from Wikidata if backend call fails or is empty
-              if (!backendEnglishName) {
-                backendEnglishName = entity?.labels?.en?.value || null
-              }
-              if (!backendEnglishDescription) {
-                backendEnglishDescription = entity?.descriptions?.en?.value || null
-              }
-            })
-            .catch((err) => {
-              if (err.name !== 'AbortError') {
-                console.error('Wikidata fetch failed:', err)
-              }
-            })
-        )
+      // Helper for wikipedia fetches
+      const fetchWikiContent = async (title, lang) => {
+        if (!title) return null
+        try {
+          const res = await fetch(`https://${lang}.wikipedia.org/w/api.php?action=query&format=json&formatversion=2&prop=extracts|pageimages&exintro=true&explaintext=true&piprop=thumbnail&pithumbsize=600&titles=${encodeURIComponent(title)}&origin=*`, { signal: controller.signal })
+          const json = await res.json()
+          const page = json.query?.pages?.[0]
+          if (page) {
+            return {
+              // Extract first paragraph by splitting at newline
+              extract: page.extract ? page.extract.split('\n')[0].trim() : null,
+              thumbnail: page.thumbnail?.source || null
+            }
+          }
+        } catch (e) {
+          if (e.name !== 'AbortError') console.error(`Wikipedia ${lang} fetch error`, e)
+        }
+        return null
       }
 
-      // Wait for both fetches to complete in parallel
+      // Helper for wikipedia search
+      const searchWikiContent = async (query, lang, siteName, country) => {
+        if (!query) return null
+        try {
+          // fetch up to 3 results to find the first valid one
+          const res = await fetch(`https://${lang}.wikipedia.org/w/api.php?action=query&format=json&formatversion=2&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=3&prop=extracts|pageimages&exintro=true&explaintext=true&piprop=thumbnail&pithumbsize=600&origin=*`, { signal: controller.signal })
+          const json = await res.json()
+          const pages = json.query?.pages || []
+          
+          for (const page of pages) {
+            if (isValidSearchResult(siteName, page.title, country)) {
+              return {
+                extract: page.extract ? page.extract.split('\n')[0].trim() : null,
+                thumbnail: page.thumbnail?.source || null,
+                title: page.title
+              }
+            }
+          }
+        } catch (e) {
+          if (e.name !== 'AbortError') console.error(`Wikipedia ${lang} search error`, e)
+        }
+        return null
+      }
+
+      let wikidataPromise = Promise.resolve()
+
+      // 2. Fetch from Wikidata if wikidata ID exists (for image assets and fallback translation)
+      if (siteDetails.wikidata) {
+        wikidataPromise = fetch(
+          `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${siteDetails.wikidata}&props=labels|descriptions|claims|sitelinks&languages=en&format=json&origin=*`,
+          { signal: controller.signal }
+        )
+          .then((res) => {
+            if (res.ok) return res.json()
+            throw new Error('Wikidata fetch failed')
+          })
+          .then(async (data) => {
+            const entity = data.entities?.[siteDetails.wikidata]
+            
+            // Extract image URL from P18 claim if present
+            if (entity?.claims?.P18?.[0]?.mainsnak?.datavalue?.value) {
+              const imageName = entity.claims.P18[0].mainsnak.datavalue.value
+              wikidataImageUrl = `https://commons.wikimedia.org/w/index.php?title=Special:FilePath/${encodeURIComponent(imageName)}&width=600`
+            }
+
+            // Fallback translation values from Wikidata if backend call fails or is empty
+            if (!backendEnglishName) {
+              backendEnglishName = entity?.labels?.en?.value || null
+            }
+            if (!backendEnglishDescription && entity?.descriptions?.en?.value) {
+              backendEnglishDescription = entity.descriptions.en.value
+            }
+
+            // WIKIPEDIA TIER 1: Use sitelinks for precise article fetch
+            if (entity?.sitelinks) {
+              const langCode = getWikiLangCode(siteDetails.country)
+              const enTitle = entity.sitelinks.enwiki?.title
+              const localTitle = entity.sitelinks[`${langCode}wiki`]?.title
+
+              if (enTitle) wikiUrlEn = `https://en.wikipedia.org/wiki/${encodeURIComponent(enTitle)}`
+              if (localTitle) wikiUrlLocal = `https://${langCode}.wikipedia.org/wiki/${encodeURIComponent(localTitle)}`
+
+              let enWikiData = null
+              if (enTitle) {
+                enWikiData = await fetchWikiContent(enTitle, 'en')
+                if (enWikiData) {
+                  if (!wikidataImageUrl && enWikiData.thumbnail) wikidataImageUrl = enWikiData.thumbnail
+                  // Wikipedia paragraph is always better than Wikidata short description
+                  if (enWikiData.extract) backendEnglishDescription = enWikiData.extract
+                }
+              }
+
+              let localWikiData = null
+              if (localTitle) {
+                localWikiData = await fetchWikiContent(localTitle, langCode)
+                if (localWikiData) {
+                  if (!wikidataImageUrl && localWikiData.thumbnail) wikidataImageUrl = localWikiData.thumbnail
+                  if (localWikiData.extract) backendLocalDescription = localWikiData.extract
+                }
+              }
+            }
+          })
+          .catch((err) => {
+            if (err.name !== 'AbortError') {
+              console.error('Wikidata fetch failed:', err)
+            }
+          })
+      }
+
+      promises.push(wikidataPromise)
+
+      // Wait for backend fetch and wikidata/wikipedia direct fetches to complete in parallel
       await Promise.all(promises)
+
+      // WIKIPEDIA TIER 2: Search Fallback if Wikidata failed to provide an image/description
+      if (!wikidataImageUrl || (!backendEnglishDescription && !backendLocalDescription)) {
+        const langCode = getWikiLangCode(siteDetails.country)
+        const searchQuery = `${siteDetails.englishName || siteDetails.name}, ${siteDetails.country || ''}`.trim().replace(/,$/, '')
+        const siteNameForValidation = siteDetails.englishName || siteDetails.name
+        
+        // Search EN
+        if (!wikidataImageUrl || !backendEnglishDescription) {
+          const enSearch = await searchWikiContent(searchQuery, 'en', siteNameForValidation, siteDetails.country)
+          if (enSearch) {
+             if (!wikidataImageUrl && enSearch.thumbnail) wikidataImageUrl = enSearch.thumbnail
+             if (!backendEnglishDescription && enSearch.extract) backendEnglishDescription = enSearch.extract
+             if (!wikiUrlEn && enSearch.title) wikiUrlEn = `https://en.wikipedia.org/wiki/${encodeURIComponent(enSearch.title)}`
+          }
+        }
+        
+        // Search Local
+        if (!backendLocalDescription) {
+           const localSearch = await searchWikiContent(searchQuery, langCode, siteNameForValidation, siteDetails.country)
+           if (localSearch) {
+             if (!wikidataImageUrl && localSearch.thumbnail) wikidataImageUrl = localSearch.thumbnail
+             if (localSearch.extract) backendLocalDescription = localSearch.extract
+             if (!wikiUrlLocal && localSearch.title) wikiUrlLocal = `https://${langCode}.wikipedia.org/wiki/${encodeURIComponent(localSearch.title)}`
+           }
+        }
+      }
 
       setSelectedSite((prev) => {
         // Only update state if the user hasn't switched to a different marker in the meantime
@@ -295,7 +439,10 @@ export default function MapExplorer() {
             ...prev,
             englishName: backendEnglishName,
             englishDescription: backendEnglishDescription,
+            description: backendLocalDescription,
             imageUrl: wikidataImageUrl || prev.imageUrl,
+            wikiUrlEn,
+            wikiUrlLocal,
             hasTranslationAttempted: true
           }
         }
