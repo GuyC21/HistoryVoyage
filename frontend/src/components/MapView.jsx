@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { TileLayer, Marker, Polygon, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 
+const iconCache = {}
+
 /**
  * getMarkerIcon Helper
  * Generates custom Leaflet DivIcons containing category-specific SVGs, colors, and pulsing selection glow effects.
@@ -11,6 +13,11 @@ import L from 'leaflet'
  * @returns {L.DivIcon} Leaflet DivIcon instance.
  */
 const getMarkerIcon = (siteType, isSelected, hasBoundary) => {
+  const cacheKey = `${siteType}-${isSelected}-${hasBoundary}`
+  if (iconCache[cacheKey]) {
+    return iconCache[cacheKey]
+  }
+
   let color = 'var(--color-other)'
   let iconSvg = ''
 
@@ -45,12 +52,15 @@ const getMarkerIcon = (siteType, isSelected, hasBoundary) => {
     </div>
   `
 
-  return L.divIcon({
+  const icon = L.divIcon({
     html: html,
     className: 'custom-pin-wrapper',
     iconSize: [32, 32],
     iconAnchor: [16, 32]
   })
+
+  iconCache[cacheKey] = icon
+  return icon
 }
 
 /**
@@ -169,6 +179,8 @@ export default function MapView({
       <TileLayer
         url={isDarkMode ? darkTiles : lightTiles}
         attribution={attribution}
+        maxNativeZoom={19}
+        maxZoom={22}
       />
 
       {activePolygon && (

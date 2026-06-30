@@ -56,6 +56,40 @@ export default function MapExplorer() {
   
   const geoRef = useRef(null)
   const drawerAbortRef = useRef(null)
+  const deepLinkTriggered = useRef(false)
+
+  // Handle Deep Linking on mount (when mapInstance is ready)
+  useEffect(() => {
+    if (mapInstance && !deepLinkTriggered.current) {
+      const siteId = new URLSearchParams(window.location.search).get('site')
+      if (siteId) {
+        deepLinkTriggered.current = true
+        fetch(`${API_BASE}/api/sites/${siteId}/`)
+          .then(res => {
+             if (res.ok) return res.json()
+             throw new Error('Site not found')
+          })
+          .then(data => {
+            if (data.geometry && data.geometry.coordinates) {
+              const [lng, lat] = data.geometry.coordinates
+              mapInstance.setView([lat, lng], 18)
+              handleSiteClick({
+                id: data.id,
+                ...data.properties,
+                coordinates: [lat, lng]
+              })
+            }
+          })
+          .catch(err => {
+            console.error('Deep link failed:', err)
+            const url = new URL(window.location)
+            url.searchParams.delete('site')
+            window.history.replaceState({}, '', url)
+          })
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapInstance])
 
   // Automatically clear toast messages after 5 seconds
   useEffect(() => {
@@ -79,7 +113,7 @@ export default function MapExplorer() {
       setError(null)
       try {
         const response = await fetch(
-          `${API_BASE}/api/sites/?in_bbox=${bounds}&limit=500`,
+          `${API_BASE}/api/sites/?in_bbox=${bounds}&limit=80`,
           { signal: abortController.signal }
         )
         if (!response.ok) {
@@ -151,6 +185,11 @@ export default function MapExplorer() {
     })
     setIsDrawerOpen(true)
 
+    // Sync to URL
+    const url = new URL(window.location)
+    url.searchParams.set('site', siteDetails.id)
+    window.history.pushState({}, '', url)
+
     // If we already have the translation, don't need a boundary, and don't need to fetch Wikidata assets, exit early
     if (hasEnglishInDetails && !needsBackendFetch && !siteDetails.wikidata) {
       return
@@ -187,6 +226,19 @@ export default function MapExplorer() {
                   }
                   return prev
                 })
+                if (mapInstance) {
+                  try {
+                    const polygonBounds = L.polygon(props.boundary).getBounds()
+                    mapInstance.fitBounds(polygonBounds, {
+                      padding: [50, 50],
+                      maxZoom: 19,
+                      animate: true,
+                      duration: 1.2
+                    })
+                  } catch (err) {
+                    console.error('Error fitting bounds:', err)
+                  }
+                }
               }
             })
             .catch((err) => {
@@ -289,7 +341,7 @@ export default function MapExplorer() {
     if (!siteFeature.geometry || !siteFeature.geometry.coordinates) return
     const [lng, lat] = siteFeature.geometry.coordinates
     if (mapInstance) {
-      mapInstance.setView([lat, lng], 15) // Zoom in closely to show the specific site
+      mapInstance.setView([lat, lng], 18) // Zoom in closely (premium detail) to show the specific site
     }
     handleSiteClick({
       id: siteFeature.id,
@@ -347,7 +399,7 @@ export default function MapExplorer() {
           center={[38.5, 20.0]} // Centered on Mediterranean
           zoom={7}
           minZoom={8}
-          maxZoom={19}
+          maxZoom={22}
           className="map-element"
           zoomControl={false}
           ref={setMapInstance}
@@ -485,10 +537,14 @@ export default function MapExplorer() {
           setIsDrawerOpen(false)
           setSelectedSite(null)
           setActivePolygon(null)
+          const url = new URL(window.location)
+          url.searchParams.delete('site')
+          window.history.pushState({}, '', url)
         }}
         isLoading={drawerLoading}
         languageMode={languageMode}
         setLanguageMode={setLanguageMode}
+        userLocation={userLocation}
       />
 
       {/* Floating toast notification */}

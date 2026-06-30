@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import { getRoadDistance, formatDistance } from '../utils/distance'
 
 /**
  * SiteDrawer Component
@@ -13,6 +14,7 @@ import React from 'react'
  * @param {boolean} props.isLoading - Controls loader skeleton animations.
  * @param {string} props.languageMode - Interface language preference ('en' or 'local').
  * @param {Function} props.setLanguageMode - Callback to update the language preference.
+ * @param {Array|Object|null} props.userLocation - User's current location [lat, lng].
  */
 export default function SiteDrawer({ 
   site, 
@@ -20,8 +22,57 @@ export default function SiteDrawer({
   onClose, 
   isLoading, 
   languageMode, 
-  setLanguageMode 
+  setLanguageMode,
+  userLocation
 }) {
+  const [distanceUnit, setDistanceUnit] = useState('km')
+  const [distanceData, setDistanceData] = useState(null)
+  const distanceAbortRef = useRef(null)
+
+  useEffect(() => {
+    if (distanceAbortRef.current) {
+      distanceAbortRef.current.abort()
+    }
+    
+    if (!isOpen) {
+      setDistanceData(null)
+      return
+    }
+
+    if (!site || !site.coordinates || !userLocation) {
+      setDistanceData(null)
+      return
+    }
+
+    const fetchDistance = async () => {
+      const controller = new AbortController()
+      distanceAbortRef.current = controller
+
+      try {
+        const [siteLat, siteLng] = site.coordinates
+        // userLocation might be an array or an object from Leaflet
+        const userLat = Array.isArray(userLocation) ? userLocation[0] : userLocation.lat
+        const userLng = Array.isArray(userLocation) ? userLocation[1] : userLocation.lng
+        
+        const data = await getRoadDistance(userLat, userLng, siteLat, siteLng, controller.signal)
+        setDistanceData(data)
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error('Distance calculation failed:', err)
+          setDistanceData(null)
+        }
+      }
+    }
+
+    fetchDistance()
+
+    return () => {
+      if (distanceAbortRef.current) {
+        distanceAbortRef.current.abort()
+      }
+    }
+  }, [site, userLocation, isOpen])
+
   if (!isOpen) return null
 
   // Helper to get category emojis and colors
@@ -126,6 +177,22 @@ export default function SiteDrawer({
               <div className="drawer-meta">
                 <span>📍 {site.country}</span>
                 {site.wikidata && <span>🆔 {site.wikidata}</span>}
+                
+                {distanceData && (
+                  <div className="drawer-distance-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', padding: '6px 8px', backgroundColor: 'var(--bg)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: '0.9em', fontWeight: '500' }} title={distanceData.isAir ? "Straight-line air distance" : "Driving distance by roads"}>
+                      {distanceData.isAir ? '✈️' : '🚗'} {formatDistance(distanceData.distance, distanceUnit)}
+                      {distanceData.isAir && <span style={{ opacity: 0.6, fontSize: '0.85em', marginLeft: '4px', fontWeight: 'normal' }}>(air distance)</span>}
+                    </span>
+                    <button 
+                      onClick={() => setDistanceUnit(prev => prev === 'km' ? 'mi' : 'km')}
+                      style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-translucent)', cursor: 'pointer', color: 'var(--text-h)', marginLeft: 'auto' }}
+                      title={`Switch to ${distanceUnit === 'km' ? 'miles' : 'kilometers'}`}
+                    >
+                      {distanceUnit === 'km' ? 'mi' : 'km'}
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Inline Language Selector */}

@@ -1,10 +1,10 @@
-import React, { useEffect, useImperativeHandle, forwardRef, useCallback } from 'react'
+import React, { useEffect, useImperativeHandle, forwardRef, useRef } from 'react'
 
 /**
  * GeolocationHandler Component
  * A logic-only React component that manages HTML5 Geolocation API requests.
- * Automatically attempts to detect device coordinates on mount, checks if they are within
- * database boundary coverage, and exposes imperative locate triggers to parent views via forwardRef.
+ * Uses watchPosition to continuously track the user's device and updates the map marker dynamically.
+ * Exposes imperative locate triggers to parent views via forwardRef to fly back to the user.
  *
  * @param {Object} props
  * @param {Object} props.mapInstance - Active Leaflet map instance.
@@ -13,6 +13,9 @@ import React, { useEffect, useImperativeHandle, forwardRef, useCallback } from '
  * @param {React.Ref} ref - Exposes trigger methods `locate` and `locateOnMount` to the parent.
  */
 const GeolocationHandler = forwardRef(({ mapInstance, onToast, onLocationFound }, ref) => {
+  const lastLocationRef = useRef(null)
+  const initialFlyDone = useRef(false)
+  const watchIdRef = useRef(null)
   
   // Bounding Box checks for Israel, Greece, Italy
   const isSupported = (latitude, longitude) => {
@@ -23,50 +26,73 @@ const GeolocationHandler = forwardRef(({ mapInstance, onToast, onLocationFound }
     )
   }
 
-  const locateUser = useCallback((showToast = true, flyTo = true) => {
-    if (navigator.geolocation) {
-      if (showToast) onToast("Locating you...")
-      
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords
-          const supported = isSupported(latitude, longitude)
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      onToast("Geolocation is not supported by this browser.")
+      return
+    }
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords
+        const supported = isSupported(latitude, longitude)
+        
+        if (supported) {
+          const loc = [latitude, longitude]
+          lastLocationRef.current = loc
+          onLocationFound(loc)
           
-          if (supported) {
-            onLocationFound([latitude, longitude])
-            if (flyTo && mapInstance) {
-              mapInstance.flyTo([latitude, longitude], 13)
-            }
-            if (showToast) onToast(null) // Clear loading toast
-          } else {
+          // Fly to the user only on their very first location resolution
+          if (!initialFlyDone.current && mapInstance) {
+            initialFlyDone.current = true
+            mapInstance.flyTo(loc, 13)
+          }
+        } else {
+          // If outside bounds on initial load
+          if (!initialFlyDone.current) {
+            initialFlyDone.current = true
             onToast("Your location is outside supported regions (Israel, Greece, Italy). Centering on Mediterranean.")
-            if (flyTo && mapInstance) {
+            if (mapInstance) {
               mapInstance.flyTo([38.5, 20.0], 7)
             }
           }
-        },
-        (err) => {
-          console.warn('Geolocation error:', err)
+        }
+      },
+      (err) => {
+        console.warn('Geolocation error:', err)
+        if (!initialFlyDone.current) {
+          initialFlyDone.current = true
           onToast("Location access denied or unavailable. Please check browser permissions.")
         }
-      )
-    } else {
-      onToast("Geolocation is not supported by this browser.")
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 10000,
+        timeout: 5000
+      }
+    )
+
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current)
+      }
     }
   }, [mapInstance, onToast, onLocationFound])
 
   // Expose location triggers to parent refs
   useImperativeHandle(ref, () => ({
-    locate: () => locateUser(true, true),
-    locateOnMount: () => locateUser(false, true)
+    locate: () => {
+      if (lastLocationRef.current && mapInstance) {
+        mapInstance.flyTo(lastLocationRef.current, 15) // Zoom in closely when explicitly clicking locate
+        onToast("Locating you...")
+        setTimeout(() => onToast(null), 1500)
+      } else {
+        onToast("Searching for GPS signal...")
+      }
+    },
+    // locateOnMount kept for API compatibility if parent calls it
+    locateOnMount: () => {}
   }))
-
-  // Trigger automatically on mount once mapInstance is active
-  useEffect(() => {
-    if (mapInstance) {
-      locateUser(false, true)
-    }
-  }, [mapInstance, locateUser])
 
   return null
 })
