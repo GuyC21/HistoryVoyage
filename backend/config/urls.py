@@ -21,4 +21,5 @@ urlpatterns = [
     
     # REST API endpoints. Mounts all routes defined inside router.urls under /api/.
     path('api/', include(router.urls)),
+    path('api/accounts/', include('accounts.urls')),
 ]

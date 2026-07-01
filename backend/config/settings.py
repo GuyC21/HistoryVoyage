@@ -54,7 +54,10 @@ INSTALLED_APPS = [
 
     # Local apps
     'heritage',
+    'accounts',
 ]
+
+AUTH_USER_MODEL = 'accounts.User'
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # CorsMiddleware must be placed before CommonMiddleware
@@ -166,4 +169,48 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5180",
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+# Django REST Framework configuration
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'accounts.authentication.SupabaseJWTAuthentication',
+    ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/day',
+        'user': '5000/day',
+    }
+}
+
+# Supabase configuration
+SUPABASE_JWT_SECRET = os.environ.get('SUPABASE_JWT_SECRET', '')
+
+# Startup validation checks for security
+import sys
+from django.core.exceptions import ImproperlyConfigured
+
+IS_TESTING = 'test' in sys.argv
+
+if not SUPABASE_JWT_SECRET and not IS_TESTING:
+    raise ImproperlyConfigured("SUPABASE_JWT_SECRET environment variable is missing or empty!")
+
+# Enforce secure SECRET_KEY in production
+if not DEBUG and SECRET_KEY.startswith('django-insecure'):
+    raise ImproperlyConfigured("Do not run in production with the default or insecure Django SECRET_KEY!")
+
+# Production-only SSL and secure cookie headers
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True
+    X_FRAME_OPTIONS = 'DENY'
+
 
