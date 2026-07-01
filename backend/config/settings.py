@@ -55,6 +55,9 @@ INSTALLED_APPS = [
     # Local apps
     'heritage',
     'accounts',
+    
+    # API Documentation
+    'drf_spectacular',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'
@@ -182,7 +185,19 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/day',
         'user': '5000/day',
-    }
+    },
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+# Spectacular Settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'HistoryVoyage API',
+    'DESCRIPTION': 'HistoryVoyage Backend API Documentation',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    # Optional: configure authentication in Swagger UI to take JWT
+    'SECURITY': [{'jwtAuth': []}],
+    'COMPONENT_SPLIT_REQUEST': True,
 }
 
 # Supabase configuration
