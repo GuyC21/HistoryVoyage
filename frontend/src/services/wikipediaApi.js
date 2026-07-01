@@ -1,4 +1,4 @@
-import { isValidSearchResult } from '../utils/wikipediaHelpers'
+import { isValidSearchResult } from '~/utils/wikipediaHelpers'
 
 /**
  * wikipediaApi Service

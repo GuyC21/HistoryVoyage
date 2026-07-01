@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { MapContainer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
-import MapView from '../components/MapView'
-import SiteDrawer from '../components/SiteDrawer'
-import ZoomPrompt from '../components/ZoomPrompt'
-import GeolocationHandler from '../components/GeolocationHandler'
-import HeaderCard from '../components/HeaderCard'
-import { useDeepLink } from '../hooks/useDeepLink'
-import { useSiteDetails } from '../hooks/useSiteDetails'
-import { useMapData } from '../hooks/useMapData'
+import MapView from '~/components/MapView'
+import SiteDrawer from '~/components/SiteDrawer'
+import ZoomPrompt from '~/components/ZoomPrompt'
+import GeolocationHandler from '~/components/GeolocationHandler'
+import HeaderCard from '~/components/HeaderCard'
+import { useDeepLink } from '~/hooks/useDeepLink'
+import { useSiteDetails } from '~/hooks/useSiteDetails'
+import { useMapData } from '~/hooks/useMapData'
 
 // Custom pulsing blue icon for user location pin
 const userLocationIcon = L.divIcon({

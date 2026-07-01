@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { backendApi } from '../services/api'
+import { backendApi } from '~/services/api'
 
 /**
  * useMapData Custom Hook

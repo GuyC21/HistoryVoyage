@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react'
-import { backendApi } from '../services/api'
-import { wikidataApi } from '../services/wikidataApi'
-import { wikipediaApi } from '../services/wikipediaApi'
-import { getWikiLangCode } from '../utils/wikipediaHelpers'
+import { backendApi } from '~/services/api'
+import { wikidataApi } from '~/services/wikidataApi'
+import { wikipediaApi } from '~/services/wikipediaApi'
+import { getWikiLangCode } from '~/utils/wikipediaHelpers'
 import L from 'leaflet'
 
 /**

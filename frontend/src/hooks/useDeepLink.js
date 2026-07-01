@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { backendApi } from '../services/api'
+import { backendApi } from '~/services/api'
 
 /**
  * useDeepLink Custom Hook

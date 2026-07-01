@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { getRoadDistance, formatDistance } from '../utils/distance'
+import { getRoadDistance, formatDistance } from '~/utils/distance'
 
 /**
  * SiteDrawer Component
