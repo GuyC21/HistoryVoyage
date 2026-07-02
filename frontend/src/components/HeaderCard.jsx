@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import SearchBar from './SearchBar'
+import './HeaderCard.css'
 
 /**
  * HeaderCard Component

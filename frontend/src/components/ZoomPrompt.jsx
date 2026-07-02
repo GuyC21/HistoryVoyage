@@ -1,4 +1,5 @@
 import React from 'react'
+import './ZoomPrompt.css'
 
 /**
  * ZoomPrompt Component
