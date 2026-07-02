@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import SearchBar from './SearchBar'
+import SearchBar from '~/components/SearchBar'
 import './HeaderCard.css'
 
 /**
