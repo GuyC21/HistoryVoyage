@@ -1,0 +1,113 @@
+/* Layout & Navbar Styles */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.global-navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px;
+  background: var(--bg-translucent);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  z-index: 100;
+  position: sticky;
+  top: 0;
+}
+
+.nav-brand {
+  font-family: 'Outfit', sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-h);
+  text-decoration: none;
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.btn-nav {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.btn-nav:hover {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 12px var(--accent-bg);
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px var(--accent-border);
+}
+
+.layout-content {
+  flex: 1;
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+.global-navbar.navbar-home {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(15, 23, 42, 0.3);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.global-navbar.navbar-home .nav-brand {
+  color: #ffffff;
+}
+
+.global-navbar.navbar-home .btn-nav:not(.btn-primary) {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.global-navbar.navbar-home .btn-nav:not(.btn-primary):hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  .global-navbar {
+    padding: 12px 16px;
+  }
+  .nav-brand {
+    font-size: 20px;
+  }
+  .btn-nav {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+}
