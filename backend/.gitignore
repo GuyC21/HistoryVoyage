@@ -9,7 +9,8 @@ media/
 staticfiles/
 
 # Environment variables
-.env
+.env*
+!.env.example
 
 # Environments
 .venv/

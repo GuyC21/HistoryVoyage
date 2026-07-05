@@ -2,5 +2,50 @@
 .agents/
 .agents
 
-# Ignore Node.js modules directory (common in some versions)
+# Ignore Node.js modules directory and build outputs
 node_modules/
+dist/
+dist-ssr/
+out/
+build/
+
+# Local environment variables
+.env*
+!.env.example
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.project
+.classpath
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Python / Django
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+venv/
+.venv/
+env/
+ENV/
+
+# Database files
+*.db
+*.sqlite3
+db.sqlite3
