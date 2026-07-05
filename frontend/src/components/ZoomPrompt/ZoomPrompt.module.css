@@ -1,5 +1,5 @@
 /* Zoom Gate / Low Zoom Notification Overlay */
-.zoom-warning-overlay {
+.zoomWarningOverlay {
   position: absolute;
   top: 0;
   left: 0;
@@ -14,7 +14,7 @@
   pointer-events: none; /* Allows user to drag the map beneath */
 }
 
-.zoom-warning-card {
+.zoomWarningCard {
   background: var(--bg-translucent);
   backdrop-filter: blur(16px);
   border: 1px solid var(--border);
@@ -27,18 +27,18 @@
   animation: pulseCard 2s infinite ease-in-out;
 }
 
-.zoom-warning-card h3 {
+.zoomWarningCard h3 {
   margin: 0 0 8px 0;
   color: var(--text-h);
   font-size: 18px;
 }
 
-.zoom-warning-card p {
+.zoomWarningCard p {
   font-size: 13px;
   margin: 0 0 16px 0;
 }
 
-.zoom-btn {
+.zoomBtn {
   background: var(--accent);
   color: #ffffff;
   border: none;
@@ -50,7 +50,7 @@
   transition: background-color 0.2s ease;
 }
 
-.zoom-btn:hover {
+.zoomBtn:hover {
   background: var(--accent-hover);
 }
 

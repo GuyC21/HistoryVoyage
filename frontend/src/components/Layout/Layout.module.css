@@ -1,5 +1,5 @@
 /* Layout & Navbar Styles */
-.app-layout {
+.appLayout {
   display: flex;
   flex-direction: column;
   width: 100vw;
@@ -7,7 +7,7 @@
   overflow: hidden;
 }
 
-.global-navbar {
+.globalNavbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -20,7 +20,7 @@
   top: 0;
 }
 
-.nav-brand {
+.navBrand {
   font-family: 'Outfit', sans-serif;
   font-size: 24px;
   font-weight: 800;
@@ -32,13 +32,13 @@
   gap: 8px;
 }
 
-.nav-actions {
+.navActions {
   display: flex;
   gap: 16px;
   align-items: center;
 }
 
-.btn-nav {
+.btnNav {
   font-family: 'Inter', sans-serif;
   font-size: 14px;
   font-weight: 600;
@@ -49,33 +49,33 @@
   transition: all 0.2s ease;
 }
 
-.btn-nav:hover {
+.btnNav:hover {
   background: var(--accent-bg);
   color: var(--accent);
 }
 
-.btn-primary {
+.btnPrimary {
   background: var(--accent);
   color: #fff;
   border: none;
   box-shadow: 0 4px 12px var(--accent-bg);
 }
 
-.btn-primary:hover {
+.btnPrimary:hover {
   background: var(--accent-hover);
   color: #fff;
   transform: translateY(-1px);
   box-shadow: 0 6px 16px var(--accent-border);
 }
 
-.layout-content {
+.layoutContent {
   flex: 1;
   position: relative;
   height: 100%;
   width: 100%;
 }
 
-.global-navbar.navbar-home {
+.globalNavbar.navbarHome {
   position: absolute;
   top: 0;
   left: 0;
@@ -85,28 +85,28 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.global-navbar.navbar-home .nav-brand {
+.globalNavbar.navbarHome .navBrand {
   color: #ffffff;
 }
 
-.global-navbar.navbar-home .btn-nav:not(.btn-primary) {
+.globalNavbar.navbarHome .btnNav:not(.btnPrimary) {
   color: rgba(255, 255, 255, 0.8);
 }
 
-.global-navbar.navbar-home .btn-nav:not(.btn-primary):hover {
+.globalNavbar.navbarHome .btnNav:not(.btnPrimary):hover {
   background: rgba(255, 255, 255, 0.1);
   color: #ffffff;
 }
 
 /* Mobile responsive styles */
 @media (max-width: 768px) {
-  .global-navbar {
+  .globalNavbar {
     padding: 12px 16px;
   }
-  .nav-brand {
+  .navBrand {
     font-size: 20px;
   }
-  .btn-nav {
+  .btnNav {
     padding: 6px 12px;
     font-size: 13px;
   }

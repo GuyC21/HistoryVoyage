@@ -1,5 +1,5 @@
 import React from 'react'
-import './ZoomPrompt.css'
+import styles from './ZoomPrompt.module.css'
 
 /**
  * ZoomPrompt Component
@@ -19,11 +19,11 @@ export default function ZoomPrompt({
   onZoomClick
 }) {
   return (
-    <div className="zoom-warning-overlay">
-      <div className="zoom-warning-card">
+    <div className={styles.zoomWarningOverlay}>
+      <div className={styles.zoomWarningCard}>
         <h3>{title}</h3>
         <p>{message}</p>
-        <button className="zoom-btn" onClick={onZoomClick}>
+        <button className={styles.zoomBtn} onClick={onZoomClick}>
           {buttonText}
         </button>
       </div>

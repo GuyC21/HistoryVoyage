@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import './SearchBar.css'
+import styles from './SearchBar.module.css'
 
 /**
  * SearchBar Component
@@ -179,12 +179,12 @@ export default function SearchBar({ onSelectSite }) {
   }, [activeIndex])
 
   return (
-    <div className="search-container" ref={containerRef}>
-      <div className="search-input-wrapper">
-        <span className="search-icon">🔍</span>
+    <div className={styles.searchContainer} ref={containerRef}>
+      <div className={styles.searchInputWrapper}>
+        <span className={styles.searchIcon}>🔍</span>
         <input
           type="text"
-          className="search-input"
+          className={styles.searchInput}
           placeholder="Search historical sites..."
           value={query}
           onChange={handleInputChange}
@@ -193,10 +193,10 @@ export default function SearchBar({ onSelectSite }) {
             if (suggestions.length > 0) setIsOpen(true)
           }}
         />
-        {loading && <div className="search-spinner"></div>}
+        {loading && <div className={styles.searchSpinner}></div>}
         {!loading && query && (
           <button
-            className="search-clear-btn"
+            className={styles.searchClearBtn}
             onClick={() => {
               setQuery('')
               setSuggestions([])
@@ -211,7 +211,7 @@ export default function SearchBar({ onSelectSite }) {
       </div>
 
       {isOpen && (
-        <ul className="search-suggestions" ref={dropdownRef}>
+        <ul className={styles.searchSuggestions} ref={dropdownRef}>
           {suggestions.length > 0 ? (
             suggestions.map((site, index) => {
               const name = site.properties.englishName || site.properties.name
@@ -223,28 +223,28 @@ export default function SearchBar({ onSelectSite }) {
               return (
                 <li
                   key={site.id}
-                  className={`search-suggestion-item ${
-                    index === activeIndex ? 'active' : ''
+                  className={`${styles.searchSuggestionItem} ${
+                    index === activeIndex ? styles.active : ''
                   }`}
                   onClick={() => handleSelect(site)}
                 >
-                  <span className="suggestion-emoji">{emoji}</span>
-                  <div className="suggestion-details">
+                  <span className={styles.suggestionEmoji}>{emoji}</span>
+                  <div className={styles.suggestionDetails}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%' }}>
-                      <span className="suggestion-name">{name}</span>
+                      <span className={styles.suggestionName}>{name}</span>
                       {hasBoundary && (
-                        <span className="suggestion-boundary-badge" title="Has boundary layout">
+                        <span className={styles.suggestionBoundaryBadge} title="Has boundary layout">
                           Layout
                         </span>
                       )}
                     </div>
-                    <span className="suggestion-country">{country}</span>
+                    <span className={styles.suggestionCountry}>{country}</span>
                   </div>
                 </li>
               )
             })
           ) : (
-            <li className="search-no-suggestions">No sites found</li>
+            <li className={styles.searchNoSuggestions}>No sites found</li>
           )}
         </ul>
       )}

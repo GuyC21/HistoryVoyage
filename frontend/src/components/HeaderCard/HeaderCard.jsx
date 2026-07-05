@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import SearchBar from '~/components/SearchBar'
-import './HeaderCard.css'
+import styles from './HeaderCard.module.css'
 
 /**
  * HeaderCard Component
@@ -72,23 +72,23 @@ export default function HeaderCard({
   }
 
   return (
-    <header className={`floating-header ${isCollapsed ? 'collapsed' : ''}`}>
-      <div className="header-top-row" style={isCollapsed ? { marginBottom: 0 } : {}}>
+    <header className={`${styles.floatingHeader} ${isCollapsed ? styles.collapsed : ''}`}>
+      <div className={styles.headerTopRow} style={isCollapsed ? { marginBottom: 0 } : {}}>
         <h1>
           <span>🗺️</span> HistoryVoyage
         </h1>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {/* Global Language Selector */}
-          <div className="language-toggle" title="Select Interface Language">
+          <div className={styles.languageToggle} title="Select Interface Language">
             <button
-              className={`language-toggle-btn ${languageMode === 'en' ? 'active' : ''}`}
+              className={`${styles.languageToggleBtn} ${languageMode === 'en' ? styles.active : ''}`}
               onClick={() => setLanguageMode('en')}
             >
               EN
             </button>
             <button
-              className={`language-toggle-btn ${languageMode === 'local' ? 'active' : ''}`}
+              className={`${styles.languageToggleBtn} ${languageMode === 'local' ? styles.active : ''}`}
               onClick={() => setLanguageMode('local')}
             >
               Local
@@ -97,7 +97,7 @@ export default function HeaderCard({
 
           {/* Collapse/Expand Toggle Button */}
           <button
-            className="filter-btn"
+            className={styles.filterBtn}
             onClick={toggleCollapse}
             style={{
               padding: '6px 10px',
@@ -123,28 +123,28 @@ export default function HeaderCard({
           
           <SearchBar onSelectSite={onSelectSite} />
           
-          <div className="stats-bar">
-            <span className="stat-badge">
+          <div className={styles.statsBar}>
+            <span className={styles.statBadge}>
               {zoom < minZoomGate 
                 ? 'Zoom in to view' 
                 : `Visible: ${visibleSitesCount} sites`}
             </span>
             {activeFilter !== 'all' && (
-              <span className="stat-badge" style={{ background: 'var(--border)', color: 'var(--text-h)' }}>
+              <span className={styles.statBadge} style={{ background: 'var(--border)', color: 'var(--text-h)' }}>
                 Filter: {activeFilter}
               </span>
             )}
           </div>
 
           {/* Quick Jump Buttons for Tourists */}
-          <div className="filters-container" style={{ marginTop: '10px', gap: '4px' }}>
+          <div className={styles.filtersContainer} style={{ marginTop: '10px', gap: '4px' }}>
             <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-h)', alignSelf: 'center', marginRight: '4px' }}>Fly to:</span>
-            <button className="filter-btn" onClick={() => onQuickJump(41.8902, 12.4922)}>🏟️ Rome</button>
-            <button className="filter-btn" onClick={() => onQuickJump(37.9715, 23.7263)}>🏛️ Athens</button>
-            <button className="filter-btn" onClick={() => onQuickJump(31.7767, 35.2227)}>🏰 Jerusalem</button>
-            <button className="filter-btn" onClick={onLocateUser} title="Jump to my location">🎯 My Location</button>
+            <button className={styles.filterBtn} onClick={() => onQuickJump(41.8902, 12.4922)}>🏟️ Rome</button>
+            <button className={styles.filterBtn} onClick={() => onQuickJump(37.9715, 23.7263)}>🏛️ Athens</button>
+            <button className={styles.filterBtn} onClick={() => onQuickJump(31.7767, 35.2227)}>🏰 Jerusalem</button>
+            <button className={styles.filterBtn} onClick={onLocateUser} title="Jump to my location">🎯 My Location</button>
             <button 
-              className={`filter-btn ${showRadiusForm || nearbyCenter ? 'active' : ''}`} 
+              className={`${styles.filterBtn} ${showRadiusForm || nearbyCenter ? styles.active : ''}`} 
               onClick={() => setShowRadiusForm(prev => !prev)}
               title="Search historical sites in a radius around the current map center"
             >
@@ -154,7 +154,7 @@ export default function HeaderCard({
 
           {/* Inline Radius Search Selector */}
           {showRadiusForm && (
-            <div className="filters-container" style={{ marginTop: '8px', padding: '6px 8px', background: 'var(--border)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className={styles.filtersContainer} style={{ marginTop: '8px', padding: '6px 8px', background: 'var(--border)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-h)' }}>Radius (m):</span>
               <input
                 type="number"
@@ -180,7 +180,7 @@ export default function HeaderCard({
                 }}
               />
               <button 
-                className="filter-btn active" 
+                className={`${styles.filterBtn} ${styles.active}`} 
                 style={{ padding: '2px 8px' }}
                 onClick={() => {
                   const r = parseFloat(radiusInput)
@@ -192,7 +192,7 @@ export default function HeaderCard({
                 Go
               </button>
               <button 
-                className="filter-btn" 
+                className={styles.filterBtn} 
                 style={{ padding: '2px 8px' }}
                 onClick={() => {
                   setShowRadiusForm(false)
@@ -205,11 +205,11 @@ export default function HeaderCard({
           )}
 
           {/* Filters */}
-          <div className="filters-container">
+          <div className={styles.filtersContainer}>
             {categories.map((cat) => (
               <button
                 key={cat.id}
-                className={`filter-btn ${activeFilter === cat.id ? 'active' : ''}`}
+                className={`${styles.filterBtn} ${activeFilter === cat.id ? styles.active : ''}`}
                 onClick={() => setActiveFilter(cat.id)}
               >
                 <span>{cat.emoji}</span> {cat.label}
