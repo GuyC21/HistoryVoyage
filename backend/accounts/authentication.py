@@ -3,13 +3,18 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework import authentication, exceptions
 
+# Initialize JWKS client at module level to cache public keys efficiently
+jwks_client = None
+if getattr(settings, 'SUPABASE_URL', None):
+    jwks_url = f"{settings.SUPABASE_URL}/auth/v1/.well-known/jwks.json"
+    jwks_client = jwt.PyJWKClient(jwks_url)
+
 class SupabaseJWTAuthentication(authentication.BaseAuthentication):
     """
     Authentication class for Django REST Framework to authenticate requests
     using Supabase JWT tokens.
 
-    Expects an Authorization header in the format:
-    Authorization: Bearer <supabase_jwt_token>
+    Supports both legacy HS256 symmetric keys and new ES256/RS256 asymmetric keys.
     """
 
     def authenticate(self, request):
@@ -31,23 +36,47 @@ class SupabaseJWTAuthentication(authentication.BaseAuthentication):
 
         token = parts[1]
 
-        if not getattr(settings, "SUPABASE_JWT_SECRET", None):
-            raise exceptions.AuthenticationFailed("SUPABASE_JWT_SECRET is not configured on the server settings.")
-
         try:
-            # Decode the JWT token.
-            # Supabase JWTs are signed with the project's JWT secret using HS256.
-            # We strictly enforce that the audience claim ('aud') is 'authenticated'.
-            payload = jwt.decode(
-                token,
-                settings.SUPABASE_JWT_SECRET,
-                algorithms=["HS256"],
-                audience="authenticated"
-            )
+            # Extract unverified header to determine the signing algorithm
+            header = jwt.get_unverified_header(token)
+            alg = header.get("alg")
+
+            if alg == "HS256":
+                if not getattr(settings, "SUPABASE_JWT_SECRET", None):
+                    raise exceptions.AuthenticationFailed("SUPABASE_JWT_SECRET is missing for HS256 token verification.")
+                
+                payload = jwt.decode(
+                    token,
+                    settings.SUPABASE_JWT_SECRET,
+                    algorithms=["HS256"],
+                    audience="authenticated"
+                )
+            elif alg in ["RS256", "ES256"]:
+                if not jwks_client:
+                    raise exceptions.AuthenticationFailed("SUPABASE_URL is missing. Cannot verify asymmetric tokens.")
+                
+                # Fetch the public key from the cached JWKS client
+                signing_key = jwks_client.get_signing_key_from_jwt(token)
+                
+                payload = jwt.decode(
+                    token,
+                    signing_key.key,
+                    algorithms=[alg],
+                    audience="authenticated"
+                )
+            else:
+                raise exceptions.AuthenticationFailed(f"Unsupported JWT algorithm: {alg}")
+
         except jwt.ExpiredSignatureError:
+            print("JWT Verification failed: Token has expired.")
             raise exceptions.AuthenticationFailed("Token has expired.")
-        except jwt.InvalidTokenError:
-            raise exceptions.AuthenticationFailed("Invalid token.")
+        except jwt.InvalidTokenError as e:
+            header = jwt.get_unverified_header(token)
+            print("JWT Verification failed:", str(e), "Header:", header)
+            raise exceptions.AuthenticationFailed(f"Invalid token: {str(e)} (Header: {header})")
+        except Exception as e:
+            print("JWT Verification failed with unexpected error:", str(e))
+            raise exceptions.AuthenticationFailed(f"Token verification failed: {str(e)}")
 
         user_id = payload.get("sub")
         email = payload.get("email")
@@ -91,6 +120,7 @@ class SupabaseJWTAuthentication(authentication.BaseAuthentication):
                 user.save()
 
         except Exception as e:
+            print("User Sync failed:", str(e))
             raise exceptions.AuthenticationFailed(f"Failed to authenticate user: {str(e)}")
 
         return (user, token)
