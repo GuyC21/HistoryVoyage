@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { getRoadDistance, formatDistance } from '~/utils/distance'
-import './SiteDrawer.css'
+import styles from './SiteDrawer.module.css'
 
 /**
  * SiteDrawer Component
@@ -132,63 +132,63 @@ export default function SiteDrawer({
 
   return (
     <div 
-      className={`site-drawer ${isOpen ? 'open' : ''}`}
+      className={`${styles.siteDrawer} ${isOpen ? styles.open : ''}`}
       style={{ '--marker-color': category?.color }}
     >
-      <button className="drawer-close-btn" onClick={onClose} aria-label="Close details">
+      <button className={styles.drawerCloseBtn} onClick={onClose} aria-label="Close details">
         &times;
       </button>
 
       {isLoading ? (
-        <div className="drawer-content-loading">
-          <div className="skeleton skeleton-image"></div>
-          <div className="skeleton skeleton-tag"></div>
-          <div className="skeleton skeleton-title"></div>
-          <div className="skeleton skeleton-text" style={{ width: '90%' }}></div>
-          <div className="skeleton skeleton-text" style={{ width: '95%' }}></div>
-          <div className="skeleton skeleton-text" style={{ width: '80%' }}></div>
-          <div className="drawer-divider"></div>
-          <div className="skeleton skeleton-text" style={{ width: '50%' }}></div>
+        <div className={styles.drawerContentLoading}>
+          <div className={`${styles.skeleton} ${styles.skeletonImage}`}></div>
+          <div className={`${styles.skeleton} ${styles.skeletonTag}`}></div>
+          <div className={`${styles.skeleton} ${styles.skeletonTitle}`}></div>
+          <div className={`${styles.skeleton} ${styles.skeletonText}`} style={{ width: '90%' }}></div>
+          <div className={`${styles.skeleton} ${styles.skeletonText}`} style={{ width: '95%' }}></div>
+          <div className={`${styles.skeleton} ${styles.skeletonText}`} style={{ width: '80%' }}></div>
+          <div className={styles.drawerDivider}></div>
+          <div className={`${styles.skeleton} ${styles.skeletonText}`} style={{ width: '50%' }}></div>
         </div>
       ) : site ? (
-        <div className="drawer-scroll-container">
+        <div className={styles.drawerScrollContainer}>
           {site.imageUrl && (
-            <div className="drawer-image-container">
+            <div className={styles.drawerImageContainer}>
               <img 
                 src={site.imageUrl} 
                 alt={displayName} 
-                className="drawer-image"
+                className={styles.drawerImage}
                 loading="lazy"
               />
             </div>
           )}
-          <div className="drawer-header">
-            <span className="drawer-tag">
+          <div className={styles.drawerHeader}>
+            <span className={styles.drawerTag}>
               {category.emoji} {category.label}
             </span>
             
-            <h2 className="drawer-title">
+            <h2 className={styles.drawerTitle}>
               {displayName}
               {isFallback && languageMode === 'en' && (
-                <span className="fallback-indicator" title="No English translation available, showing local name">
+                <span className={styles.fallbackIndicator} title="No English translation available, showing local name">
                   Local Name
                 </span>
               )}
             </h2>
 
             {showNativeSubLabel && (
-              <div className="drawer-native-name" title="Native local name">
+              <div className={styles.drawerNativeName} title="Native local name">
                 Native: {site.name}
               </div>
             )}
 
-            <div className="drawer-language-row">
-              <div className="drawer-meta">
+            <div className={styles.drawerLanguageRow}>
+              <div className={styles.drawerMeta}>
                 <span>📍 {site.country}</span>
                 {site.wikidata && <span>🆔 {site.wikidata}</span>}
                 
                 {distanceData && (
-                  <div className="drawer-distance-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', padding: '6px 8px', backgroundColor: 'var(--bg)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                  <div className={styles.drawerDistanceWrapper} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', padding: '6px 8px', backgroundColor: 'var(--bg)', borderRadius: '6px', border: '1px solid var(--border)' }}>
                     <span style={{ fontSize: '0.9em', fontWeight: '500' }} title={distanceData.isAir ? "Straight-line air distance" : "Driving distance by roads"}>
                       {distanceData.isAir ? '✈️' : '🚗'} {formatDistance(distanceData.distance, distanceUnit)}
                       {distanceData.isAir && <span style={{ opacity: 0.6, fontSize: '0.85em', marginLeft: '4px', fontWeight: 'normal' }}>(air distance)</span>}
@@ -206,15 +206,15 @@ export default function SiteDrawer({
 
               {/* Inline Language Selector */}
               {site.wikidata && (
-                <div className="drawer-language-selector">
+                <div className={styles.drawerLanguageSelector}>
                   <button
-                    className={`drawer-lang-btn ${languageMode === 'en' ? 'active' : ''}`}
+                    className={`${styles.drawerLangBtn} ${languageMode === 'en' ? styles.active : ''}`}
                     onClick={() => setLanguageMode('en')}
                   >
                     EN
                   </button>
                   <button
-                    className={`drawer-lang-btn ${languageMode === 'local' ? 'active' : ''}`}
+                    className={`${styles.drawerLangBtn} ${languageMode === 'local' ? styles.active : ''}`}
                     onClick={() => setLanguageMode('local')}
                   >
                     Local
@@ -224,9 +224,9 @@ export default function SiteDrawer({
             </div>
           </div>
 
-          <div className="drawer-divider"></div>
+          <div className={styles.drawerDivider}></div>
 
-          <div className="drawer-body">
+          <div className={styles.drawerBody}>
             {displayDescription ? (
               <p>{displayDescription}</p>
             ) : (
@@ -249,7 +249,7 @@ export default function SiteDrawer({
                   href={wikiUrl} 
                   target="_blank" 
                   rel="noopener noreferrer" 
-                  className="wikipedia-btn"
+                  className={styles.wikipediaBtn}
                 >
                   📚 Explore on Wikipedia
                 </a>
@@ -261,7 +261,7 @@ export default function SiteDrawer({
                   href={`https://www.wikidata.org/wiki/${site.wikidata}`} 
                   target="_blank" 
                   rel="noopener noreferrer" 
-                  className="wikipedia-btn"
+                  className={styles.wikipediaBtn}
                 >
                   📚 Explore on Wikidata
                 </a>
