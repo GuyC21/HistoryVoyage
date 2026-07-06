@@ -6,7 +6,7 @@ from rest_framework.exceptions import ValidationError, PermissionDenied
 
 from heritage.models import HistoricalSite
 from .models import Voyage, VoyageStop
-from .services import create_voyage, add_site_to_voyage, reorder_voyage_stops
+from .services import create_voyage, add_site_to_voyage, reorder_voyage_stops, remove_site_from_voyage
 from .selectors import get_voyages_for_user, get_voyage_details
 
 User = get_user_model()
@@ -195,4 +195,54 @@ class VoyageIntegrationTests(APITestCase):
         # Check order in response
         self.assertEqual(response.data['stops'][0]['id'], stop_2.id)
         self.assertEqual(response.data['stops'][1]['id'], stop_1.id)
+
+    def test_add_site_duplicate_validation_service(self):
+        """
+        Verifies that adding a duplicate site through the service layer raises a ValidationError.
+        """
+        add_site_to_voyage(user=self.user_a, voyage=self.voyage_a, site=self.site_1)
+        with self.assertRaises(ValidationError):
+            add_site_to_voyage(user=self.user_a, voyage=self.voyage_a, site=self.site_1)
+
+    def test_remove_site_service(self):
+        """
+        Verifies removing a site stop from a voyage re-indexes remaining stops properly.
+        """
+        add_site_to_voyage(user=self.user_a, voyage=self.voyage_a, site=self.site_1)
+        stop_2 = add_site_to_voyage(user=self.user_a, voyage=self.voyage_a, site=self.site_2)
+        stop_3 = add_site_to_voyage(user=self.user_a, voyage=self.voyage_a, site=self.site_3)
+
+        # Remove site 2
+        remove_site_from_voyage(user=self.user_a, voyage=self.voyage_a, site=self.site_2)
+
+        # Stop count should be 2, and stop 3 should now be order_index 1
+        self.assertEqual(self.voyage_a.stops.count(), 2)
+        stop_3.refresh_from_db()
+        self.assertEqual(stop_3.order_index, 1)
+
+    def test_api_add_site_duplicate_validation(self):
+        """
+        Verifies the API returns a 400 Bad Request if trying to add a duplicate site.
+        """
+        self.client.force_authenticate(user=self.user_a)
+        # First addition
+        self.client.post(f'/api/voyages/{self.voyage_a.id}/add-site/', {'siteId': self.site_1.id})
+        # Duplicate addition
+        response = self.client.post(f'/api/voyages/{self.voyage_a.id}/add-site/', {'siteId': self.site_1.id})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_api_remove_site(self):
+        """
+        Verifies the POST /api/voyages/<id>/remove-site/ endpoint successfully removes a stop.
+        """
+        add_site_to_voyage(user=self.user_a, voyage=self.voyage_a, site=self.site_1)
+        self.client.force_authenticate(user=self.user_a)
+        
+        response = self.client.post(
+            f'/api/voyages/{self.voyage_a.id}/remove-site/',
+            {'siteId': self.site_1.id}
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['stops']), 0)
+
 

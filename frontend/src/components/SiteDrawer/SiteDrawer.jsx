@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { getRoadDistance, formatDistance } from '~/utils/distance'
+import { useVoyage } from '~/context/VoyageContext'
 import styles from './SiteDrawer.module.css'
 
 /**
@@ -24,7 +25,8 @@ export default function SiteDrawer({
   isLoading, 
   languageMode, 
   setLanguageMode,
-  userLocation
+  userLocation,
+  onToast
 }) {
   /** @type {string} Unit selection: 'km' (kilometers) or 'mi' (miles). */
   const [distanceUnit, setDistanceUnit] = useState('km')
@@ -34,6 +36,10 @@ export default function SiteDrawer({
    * Format: { distance: number, isAir: boolean }.
    */
   const [distanceData, setDistanceData] = useState(null)
+
+  const { activeVoyage, addSiteToVoyage, removeSiteFromVoyage } = useVoyage()
+  const [isAdding, setIsAdding] = useState(false)
+  const [isRemoving, setIsRemoving] = useState(false)
 
   /** @type {React.MutableRefObject<AbortController|null>} Ref tracking OSRM driving distance fetch operations. */
   const distanceAbortRef = useRef(null)
@@ -82,7 +88,7 @@ export default function SiteDrawer({
     }
   }, [site, userLocation, isOpen])
 
-  if (!isOpen) return null
+
 
   // Helper to get category emojis and colors
   const getCategoryMeta = (type) => {
@@ -238,39 +244,96 @@ export default function SiteDrawer({
             )}
           </div>
 
-          {(() => {
-            const wikiUrl = languageMode === 'en' 
-              ? (site.wikiUrlEn || site.wikiUrlLocal) 
-              : (site.wikiUrlLocal || site.wikiUrlEn)
-            
-            if (wikiUrl) {
+            {(() => {
+              const wikiUrl = languageMode === 'en' 
+                ? (site.wikiUrlEn || site.wikiUrlLocal) 
+                : (site.wikiUrlLocal || site.wikiUrlEn)
+              
+              if (wikiUrl) {
+                return (
+                  <a 
+                    href={wikiUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className={styles.wikipediaBtn}
+                  >
+                    📚 Explore on Wikipedia
+                  </a>
+                )
+              }
+              if (site.wikidata) {
+                return (
+                  <a 
+                    href={`https://www.wikidata.org/wiki/${site.wikidata}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className={styles.wikipediaBtn}
+                  >
+                    📚 Explore on Wikidata
+                  </a>
+                )
+              }
+              return null
+            })()}
+
+            {/* Voyage Actions */}
+            {(() => {
+              if (!activeVoyage) {
+                return (
+                  <div style={{ marginTop: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                    Select a Voyage from your Dashboard to add sites.
+                  </div>
+                )
+              }
+
+              const isAdded = activeVoyage.stops?.some(stop => String(stop.siteId) === String(site.id))
+
+              if (isAdded) {
+                return (
+                  <button
+                    onClick={async () => {
+                      try {
+                        setIsRemoving(true)
+                        await removeSiteFromVoyage(activeVoyage.id, site.id)
+                        onToast?.(`Removed ${displayName} from ${activeVoyage.title}`)
+                      } catch (err) {
+                        console.error('Failed to remove site:', err)
+                        onToast?.('Failed to remove site from voyage')
+                      } finally {
+                        setIsRemoving(false)
+                      }
+                    }}
+                    disabled={isRemoving}
+                    className={`${styles.voyageActionBtn} ${styles.voyageRemoveBtn}`}
+                  >
+                    {isRemoving ? 'Removing...' : `❌ Remove from ${activeVoyage.title}`}
+                  </button>
+                )
+              }
+
               return (
-                <a 
-                  href={wikiUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className={styles.wikipediaBtn}
+                <button
+                  onClick={async () => {
+                    try {
+                      setIsAdding(true)
+                      await addSiteToVoyage(activeVoyage.id, site.id)
+                      onToast?.(`Added ${displayName} to ${activeVoyage.title}`)
+                    } catch (err) {
+                      console.error('Failed to add site:', err)
+                      onToast?.('Failed to add site to voyage')
+                    } finally {
+                      setIsAdding(false)
+                    }
+                  }}
+                  disabled={isAdding}
+                  className={`${styles.voyageActionBtn} ${styles.voyageAddBtn}`}
                 >
-                  📚 Explore on Wikipedia
-                </a>
+                  {isAdding ? 'Adding...' : `➕ Add to ${activeVoyage.title}`}
+                </button>
               )
-            }
-            if (site.wikidata) {
-              return (
-                <a 
-                  href={`https://www.wikidata.org/wiki/${site.wikidata}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className={styles.wikipediaBtn}
-                >
-                  📚 Explore on Wikidata
-                </a>
-              )
-            }
-            return null
-          })()}
-        </div>
-      ) : (
+            })()}
+          </div>
+        ) : (
         <p>Select a historical site to view details.</p>
       )}
     </div>

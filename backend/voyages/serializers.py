@@ -16,11 +16,12 @@ class HistoricalSiteMinimalSerializer(serializers.ModelSerializer):
     """
     englishName = serializers.CharField(source='english_name', read_only=True, allow_null=True)
     siteType = serializers.CharField(source='site_type', read_only=True)
+    osmType = serializers.CharField(source='osm_type', read_only=True)
     coordinates = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = HistoricalSite
-        fields = ('id', 'name', 'englishName', 'wikidata', 'country', 'siteType', 'coordinates')
+        fields = ('id', 'name', 'englishName', 'wikidata', 'country', 'siteType', 'osmType', 'coordinates')
 
     def get_coordinates(self, obj) -> list[float] | None:
         """

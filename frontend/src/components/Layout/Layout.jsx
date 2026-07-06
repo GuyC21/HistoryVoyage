@@ -16,6 +16,8 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const isHome = location.pathname === '/';
+  const isDashboard = location.pathname === '/dashboard';
+  const isDarkNavbar = isHome || isDashboard;
   const { user, djangoUser, signOut } = useAuth();
 
   const handleSignOut = async () => {
@@ -37,7 +39,7 @@ export default function Layout() {
 
   return (
     <div className={styles.appLayout}>
-      <nav className={`${styles.globalNavbar} ${isHome ? styles.navbarHome : ''}`}>
+      <nav className={`${styles.globalNavbar} ${isDarkNavbar ? styles.navbarHome : ''}`}>
         <Link to="/" className={styles.navBrand}>
           🗺️ HistoryVoyage
         </Link>

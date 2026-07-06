@@ -6,7 +6,7 @@ import styles from './Signup.module.css'
 
 // === REDIRECT CONFIGURATION ===
 // Change these paths to control where users go after registering successfully.
-const REDIRECT_ON_AUTO_CONFIRM = '/explore'   // Destination when email confirmation is disabled
+const REDIRECT_ON_AUTO_CONFIRM = '/dashboard'   // Destination when email confirmation is disabled
 const REDIRECT_TO_LOGIN_PAGE = '/login'       // Destination when email confirmation is enabled (after clicking popup button)
 
 

@@ -48,6 +48,10 @@ def add_site_to_voyage(*, user: User, voyage: Voyage, site: HistoricalSite) -> V
     if voyage.user != user:
         raise PermissionDenied("You do not have permission to modify this voyage.")
 
+    # Enforce unique site constraint per voyage
+    if voyage.stops.filter(site=site).exists():
+        raise ValidationError("This site is already in your voyage.")
+
     with transaction.atomic():
         # Find maximum current order index to append
         max_idx = voyage.stops.aggregate(Max('order_index'))['order_index__max']
@@ -110,3 +114,28 @@ def reorder_voyage_stops(*, user: User, voyage: Voyage, stop_ids: list[int]) -> 
             updated_stops.append(stop)
 
         return updated_stops
+
+
+def remove_site_from_voyage(*, user: User, voyage: Voyage, site: HistoricalSite) -> None:
+    """
+    Removes a historical site stop from a user's voyage and re-indexes remaining stops.
+    Enforces ownership validation.
+    """
+    if voyage.user != user:
+        raise PermissionDenied("You do not have permission to modify this voyage.")
+
+    with transaction.atomic():
+        # Find the stop to delete
+        stop_to_delete = voyage.stops.filter(site=site).first()
+        if not stop_to_delete:
+            raise ValidationError("This site is not part of the voyage.")
+
+        stop_to_delete.delete()
+
+        # Re-index remaining stops to keep indices sequential
+        remaining_stops = voyage.stops.all().order_by('order_index')
+        for i, stop in enumerate(remaining_stops):
+            if stop.order_index != i:
+                stop.order_index = i
+                stop.save()
+

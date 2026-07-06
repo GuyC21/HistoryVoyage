@@ -12,7 +12,7 @@ from .serializers import (
     ReorderStopsRequestSerializer
 )
 from .selectors import get_voyages_for_user
-from .services import create_voyage, add_site_to_voyage, reorder_voyage_stops
+from .services import create_voyage, add_site_to_voyage, reorder_voyage_stops, remove_site_from_voyage
 
 class VoyageViewSet(viewsets.ModelViewSet):
     """
@@ -116,4 +116,44 @@ class VoyageViewSet(viewsets.ModelViewSet):
         # Refresh and serialize updated voyage details
         updated_voyage = self.get_queryset().get(pk=voyage.pk)
         return Response(self.get_serializer(updated_voyage).data)
+
+    @extend_schema(
+        request=AddSiteRequestSerializer,
+        responses={200: VoyageSerializer},
+        summary="Remove a stop/historical site from a voyage",
+        description="Removes the stop at the specified historical site from the voyage and re-indexes remaining stops."
+    )
+    @action(detail=True, methods=['post'], url_path='remove-site')
+    def remove_site(self, request, pk=None):
+        """
+        Action to remove a historical site stop from the voyage.
+        
+        Expects a body containing 'siteId' (or 'site_id').
+        """
+        voyage = self.get_object()
+        
+        site_id = request.data.get('siteId') or request.data.get('site_id')
+        if not site_id:
+            return Response(
+                {"detail": "Field 'siteId' or 'site_id' is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            site_id_int = int(site_id)
+        except (ValueError, TypeError):
+            return Response(
+                {"detail": "Invalid 'siteId'. It must be an integer."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        site = get_object_or_404(HistoricalSite, pk=site_id_int)
+        
+        # Invoke service logic
+        remove_site_from_voyage(user=request.user, voyage=voyage, site=site)
+        
+        # Refresh and serialize updated voyage details
+        updated_voyage = self.get_queryset().get(pk=voyage.pk)
+        return Response(self.get_serializer(updated_voyage).data)
+
 

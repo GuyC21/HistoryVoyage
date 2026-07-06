@@ -32,7 +32,7 @@ export default function Login() {
     setSubmitting(true)
     try {
       await signIn(email, password)
-      navigate('/explore')
+      navigate('/dashboard')
     } catch (err) {
       console.error(err)
       setError(err.message || 'Failed to log in. Please check your credentials.')

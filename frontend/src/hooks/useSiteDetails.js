@@ -62,7 +62,14 @@ export const useSiteDetails = (mapInstance, setActivePolygon) => {
     window.history.pushState({}, '', url)
 
     if (hasEnglishInDetails && !needsBackendFetch && !siteDetails.wikidata) {
+      if (mapInstance && siteDetails.coordinates) {
+        mapInstance.flyTo(siteDetails.coordinates, 17, { animate: true, duration: 2.5 })
+      }
       return
+    }
+
+    if (!needsBackendFetch && mapInstance && siteDetails.coordinates) {
+      mapInstance.flyTo(siteDetails.coordinates, 17, { animate: true, duration: 2.5 })
     }
 
     setDrawerLoading(true)
@@ -99,15 +106,20 @@ export const useSiteDetails = (mapInstance, setActivePolygon) => {
                 if (mapInstance) {
                   try {
                     const polygonBounds = L.polygon(props.boundary).getBounds()
-                    mapInstance.fitBounds(polygonBounds, {
+                    mapInstance.flyToBounds(polygonBounds, {
                       padding: [50, 50],
                       maxZoom: 19,
                       animate: true,
-                      duration: 1.2
+                      duration: 2.5
                     })
                   } catch (err) {
                     console.error('Error fitting bounds:', err)
                   }
+                }
+              } else {
+                // Backend fetched, but no boundary returned. Fly to point instead!
+                if (mapInstance && siteDetails.coordinates) {
+                  mapInstance.flyTo(siteDetails.coordinates, 17, { animate: true, duration: 2.5 })
                 }
               }
             })
