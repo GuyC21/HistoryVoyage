@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     # Local apps
     'heritage',
     'accounts',
+    'voyages',
     
     # API Documentation
     'drf_spectacular',
