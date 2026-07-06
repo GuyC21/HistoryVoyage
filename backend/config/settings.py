@@ -202,6 +202,7 @@ SPECTACULAR_SETTINGS = {
 
 # Supabase configuration
 SUPABASE_JWT_SECRET = os.environ.get('SUPABASE_JWT_SECRET', '')
+SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
 
 # Startup validation checks for security
 import sys

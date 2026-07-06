@@ -1,0 +1,90 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(3, 7, 18, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+.dialogCard {
+  background: rgba(17, 24, 39, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 1px 1px rgba(255, 255, 255, 0.05) inset;
+  padding: 24px;
+  box-sizing: border-box;
+  transform: scale(0.95);
+  opacity: 0;
+  animation: scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    background-color: rgba(3, 7, 18, 0);
+    backdrop-filter: blur(0px);
+  }
+  to {
+    background-color: rgba(3, 7, 18, 0.6);
+    backdrop-filter: blur(8px);
+  }
+}
+
+@keyframes scaleUp {
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 12px;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.btnClose {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.btnClose:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+}
+
+.body {
+  font-family: var(--sans);
+  font-size: 14px;
+  color: #d1d5db;
+  line-height: 1.6;
+}

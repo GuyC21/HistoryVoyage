@@ -62,6 +62,26 @@ docker-compose exec web python manage.py load_data
 
 ---
 
+## 🔒 Authentication & Security
+
+This backend is secured using JSON Web Tokens (JWT) issued by **Supabase Auth**.
+
+### Asymmetric ES256 Token Verification
+Supabase uses asymmetric cryptographic signatures (`ES256` or `RS256`) rather than legacy symmetric shared secrets (`HS256`).
+
+To safely verify these tokens without storing a shared secret, the backend operates as follows:
+1. The `SupabaseJWTAuthentication` class (in `accounts/authentication.py`) intercepts the incoming token and extracts its unverified header to determine the signing algorithm.
+2. The backend utilizes the `PyJWKClient` to dynamically fetch the **JSON Web Key Set (JWKS)** public keys directly from the Supabase project domain (`https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json`).
+3. The token's signature is verified mathematically against the retrieved public key, proving its authenticity without exposing the private signing key.
+4. Legacy `HS256` fallback is preserved using the `SUPABASE_JWT_SECRET` environment variable for backward compatibility.
+
+This decoupled structure prevents key leakage and complies with enterprise-grade security architecture.
+
+### Automatic Profile Synchronization
+When a user authenticates, Django parses the decoded JWT claims (such as `sub` and `email`) to perform a **Just-In-Time (JIT) sync** with the local `auth_user` table. This automatically generates or updates Django users upon their first request, allowing the local backend database to attach foreign keys and enforce permissions locally without blocking requests to call the Supabase REST APIs.
+
+---
+
 ## 💾 Database Configuration
 
 The application database parameters are configured via environment variables inside a `.env` file (copied from `.env.example`).

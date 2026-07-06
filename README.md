@@ -67,6 +67,11 @@ To resolve multilingual naming discrepancies and display rich media summaries, t
 3. **Wikipedia Summary Extract**: Queries the local language (Greek/Hebrew/Italian) and English Wikipedia APIs to fetch introduction text abstracts.
 4. **Wikipedia Search Fallback**: If no direct sitelink is available, runs a word-intersection heuristic matching query to find the correct article based on title similarity and country tags.
 
+### 4. User Authentication (Supabase)
+HistoryVoyage uses Supabase for user authentication (Sign Up / Log In).
+- **JWT Tokens**: The React frontend securely stores Supabase session tokens and automatically attaches them to any outgoing requests to the local Django REST API via an interceptor (`apiFetch`).
+- **Profile Synchronization**: When a user logs in, the `backendApi.fetchCurrentUser()` endpoint validates the JWT on the Django side and ensures a synced user profile is available in the database.
+
 ---
 
 ## 🗄️ Spatial Database & Seeding Stats
@@ -116,11 +121,15 @@ The production spatial database runs on a remote Supabase Postgres container wit
    ```bash
    cd ../frontend
    ```
-2. Install Javascript dependencies:
+2. Copy the example environment variables file and configure your Supabase credentials:
+   ```bash
+   cp .env.example .env
+   ```
+3. Install Javascript dependencies:
    ```bash
    npm install
    ```
-3. Start the Vite hot-reloading development server:
+4. Start the Vite hot-reloading development server:
    ```bash
    npm run dev
    ```
