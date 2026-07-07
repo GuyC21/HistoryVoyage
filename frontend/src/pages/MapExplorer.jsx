@@ -6,9 +6,11 @@ import SiteDrawer from '~/components/SiteDrawer'
 import ZoomPrompt from '~/components/ZoomPrompt'
 import GeolocationHandler from '~/components/GeolocationHandler'
 import HeaderCard from '~/components/HeaderCard'
+import ItinerarySidebar from '~/components/ItinerarySidebar/ItinerarySidebar'
 import { useDeepLink } from '~/hooks/useDeepLink'
 import { useSiteDetails } from '~/hooks/useSiteDetails'
 import { useMapData } from '~/hooks/useMapData'
+import { useVoyage } from '~/context/VoyageContext'
 
 // Custom pulsing blue icon for user location pin
 const userLocationIcon = L.divIcon({
@@ -73,6 +75,9 @@ export default function MapExplorer() {
 
   /** @type {number} Radius search limit boundary in meters. */
   const [nearbyRadius, setNearbyRadius] = useState(5000)
+
+  /** @type {boolean} Controls visibility of the left collapsible Itinerary sidebar. */
+  const [isItineraryOpen, setIsItineraryOpen] = useState(false)
   
   /** @type {React.RefObject} Ref containing locate functions exposed by GeolocationHandler. */
   const geoRef = useRef(null)
@@ -101,7 +106,6 @@ export default function MapExplorer() {
 
   // Custom Hooks for business logic
   
-  // Fetches sites from backend depending on bounding box moves or active radius filters
   const { sites, loading, error } = useMapData(bounds, nearbyCenter, nearbyRadius, activeFilter)
   
   // Controls individual historical site details retrieval, images loading, and drawer slides
@@ -112,6 +116,9 @@ export default function MapExplorer() {
     handleSiteClick, 
     closeDrawer 
   } = useSiteDetails(mapInstance, setActivePolygon)
+
+  // Voyage context
+  const { activeVoyage, isVoyageOnlyView, toggleVoyageView } = useVoyage()
 
   // Resolves direct links containing ?site=<id> URL search parameters
   useDeepLink(mapInstance, handleSiteClick)
@@ -124,20 +131,44 @@ export default function MapExplorer() {
     }
   }, [toast])
 
-  // Filter sites when sites data or activeFilter changes
+  // Filter sites when sites data, activeFilter, or voyage toggle changes
   useEffect(() => {
-    if (activeFilter === 'all') {
-      setFilteredSites(sites)
-    } else if (activeFilter === 'relation') {
-      setFilteredSites(
-        sites.filter((site) => site.properties?.osmType === 'relation')
-      )
-    } else {
-      setFilteredSites(
-        sites.filter((site) => site.properties?.site_type === activeFilter)
-      )
+    let filtered = sites
+
+    // 1. Filter by category
+    if (activeFilter === 'relation') {
+      filtered = filtered.filter((site) => site.properties?.osmType === 'relation')
+    } else if (activeFilter !== 'all') {
+      filtered = filtered.filter((site) => site.properties?.site_type === activeFilter)
     }
-  }, [sites, activeFilter])
+
+    // 2. Filter by Voyage if active
+    if (isVoyageOnlyView && activeVoyage) {
+      filtered = (activeVoyage.stops || []).map(stop => {
+        const details = stop.siteDetails
+        if (!details || !details.coordinates) return null
+        return {
+          id: details.id,
+          geometry: {
+            type: 'Point',
+            coordinates: [details.coordinates[1], details.coordinates[0]] // [lng, lat]
+          },
+          properties: {
+            name: details.name,
+            englishName: details.englishName,
+            site_type: details.siteType,
+            wikidata: details.wikidata,
+            country: details.country,
+            osmType: 'node'
+          }
+        }
+      }).filter(Boolean)
+    }
+
+    setFilteredSites(filtered)
+  }, [sites, activeFilter, isVoyageOnlyView, activeVoyage])
+
+
 
   /**
    * Zooms the map view into the threshold level MIN_ZOOM_GATE.
@@ -156,8 +187,8 @@ export default function MapExplorer() {
    */
   const handleQuickJump = (lat, lng) => {
     if (mapInstance) {
-      // Zoom into 12 which automatically clears the zoom gate (zoom >= 7) and fetches markers
-      mapInstance.setView([lat, lng], 12)
+      // Fly to the city center using Leaflet's default space-flight animation
+      mapInstance.flyTo([lat, lng], 12, { animate: true })
     }
   }
 
@@ -169,9 +200,6 @@ export default function MapExplorer() {
   const handleSelectSite = (siteFeature) => {
     if (!siteFeature.geometry || !siteFeature.geometry.coordinates) return
     const [lng, lat] = siteFeature.geometry.coordinates
-    if (mapInstance) {
-      mapInstance.setView([lat, lng], 18) // Zoom in closely (premium detail) to show the specific site
-    }
     handleSiteClick({
       id: siteFeature.id,
       ...siteFeature.properties,
@@ -208,6 +236,20 @@ export default function MapExplorer() {
         onTriggerNearby={handleTriggerNearby}
         onClearNearby={handleClearNearby}
         nearbyCenter={nearbyCenter}
+        activeVoyage={activeVoyage}
+        isVoyageOnlyView={isVoyageOnlyView}
+        toggleVoyageView={toggleVoyageView}
+        isItineraryOpen={isItineraryOpen}
+        onToggleItinerary={() => setIsItineraryOpen(prev => !prev)}
+      />
+
+      {/* Collapsible Itinerary Sidebar sliding from the left */}
+      <ItinerarySidebar
+        isOpen={isItineraryOpen}
+        onClose={() => setIsItineraryOpen(false)}
+        onToast={setToast}
+        mapInstance={mapInstance}
+        onSelectSite={handleSiteClick}
       />
 
       {/* Map loading spinner */}
@@ -337,6 +379,7 @@ export default function MapExplorer() {
             activePolygon={activePolygon}
             nearbyCenter={nearbyCenter}
             nearbyRadius={nearbyRadius}
+            isVoyageOnlyView={isVoyageOnlyView}
           />
 
           {/* Reusable geolocation logic component */}
@@ -372,6 +415,7 @@ export default function MapExplorer() {
         languageMode={languageMode}
         setLanguageMode={setLanguageMode}
         userLocation={userLocation}
+        onToast={setToast}
       />
 
       {/* Floating toast notification */}

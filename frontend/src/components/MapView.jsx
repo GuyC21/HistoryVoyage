@@ -157,7 +157,8 @@ export default function MapView({
   minZoomGate,
   activePolygon,
   nearbyCenter,
-  nearbyRadius
+  nearbyRadius,
+  isVoyageOnlyView
 }) {
   /**
    * @type {boolean} Sensing system color scheme.
@@ -228,7 +229,7 @@ export default function MapView({
         minZoomGate={minZoomGate} 
       />
 
-      {currentZoom >= minZoomGate && sites.map((site) => {
+      {(currentZoom >= minZoomGate || isVoyageOnlyView) && sites.map((site) => {
         // Check if site has valid coordinates
         // DRF-GIS GeoJSON output has geometry.coordinates as [lng, lat]
         if (!site.geometry || !site.geometry.coordinates) return null
