@@ -4,7 +4,7 @@ import json
 import time
 from django.core.management.base import BaseCommand
 from django.contrib.gis.geos import Point
-from heritage.models import HistoricalSite
+from heritage.models import HistoricalSite, Country
 
 def is_historical_museum(name, tags):
     # 1. If it has a 'historic' tag, it is historical
@@ -77,12 +77,10 @@ class Command(BaseCommand):
     help = 'Harvest historical and holy sites from OpenStreetMap (via Overpass API) and seed the database'
 
     def handle(self, *args, **options):
-        # Target countries/regions: Israel uses a bounding box to cover all disputed and Old City areas.
-        countries = [
-            {'name': 'Israel', 'bbox': '29.4,34.0,33.5,36.0'},
-            {'name': 'Greece', 'code': 'GR'},
-            {'name': 'Italy', 'code': 'IT'},
-        ]
+        countries = Country.objects.all()
+        if not countries.exists():
+            self.stdout.write(self.style.WARNING("No countries found in the database. Please add countries via Django Admin first."))
+            return
 
         overpass_endpoints = [
             'https://overpass-api.de/api/interpreter',
@@ -91,26 +89,28 @@ class Command(BaseCommand):
         ]
 
         for country in countries:
-            db_country_name = country['name']
-            self.stdout.write(self.style.WARNING(f"\n---> Starting harvest for {country['name']} (saving to country: {db_country_name})..."))
+            db_country_name = country.name
+            self.stdout.write(self.style.WARNING(f"\n---> Starting harvest for {country.name} (saving to country: {db_country_name})..."))
             
             # Define specific tag sets for different element types to optimize query times.
             node_tags = "castle|ruins|monument|monastery|tomb|archaeological_site|fortress|fort|city_gate|battlefield|archaeological|ruin|tower|temple|heritage|memorial|manor"
             relation_tags = "castle|ruins|monument|monastery|tomb|archaeological_site|fortress|fort|city_gate|battlefield|archaeological|ruin|tower|temple|heritage|memorial|manor|city_wall|wall"
             
             # Ways scan: include 'yes' and 'wall' for Israel, and 'city_wall' and 'wall' for Greece/Italy.
-            if country['name'] == 'Israel':
+            if country.name == 'Israel':
                 way_tags = "castle|ruins|monument|monastery|tomb|archaeological_site|fortress|fort|city_gate|battlefield|archaeological|ruin|yes|wall|city_wall|tower|temple|heritage|memorial|manor"
             else:
                 way_tags = "castle|ruins|monument|monastery|tomb|archaeological_site|fortress|fort|city_gate|battlefield|archaeological|ruin|city_wall|wall|tower|temple|heritage|memorial|manor"
 
             # Construct the Overpass QL query dynamically based on whether bbox or area code is used
-            if 'bbox' in country:
-                area_filter = f"({country['bbox']})"
+            if country.bbox:
+                # country.bbox is a list [south, west, north, east]
+                bbox_str = ",".join(map(str, country.bbox))
+                area_filter = f"({bbox_str})"
                 query_prefix = ""
             else:
                 area_filter = "(area.searchArea)"
-                query_prefix = f'area["ISO3166-1"="{country["code"]}"]->.searchArea;'
+                query_prefix = f'area["ISO3166-1"="{country.code}"]->.searchArea;'
 
             query = f"""
             [out:json][timeout:300];
@@ -162,7 +162,7 @@ class Command(BaseCommand):
                     req = urllib.request.Request(endpoint, data=data, headers={'User-Agent': 'GeospatialHeritagePlanner/1.0'})
                     
                     try:
-                        self.stdout.write(f"Fetching data from Overpass API for {country['name']} (Attempt {attempt}/{max_retries} via {endpoint})...")
+                        self.stdout.write(f"Fetching data from Overpass API for {country.name} (Attempt {attempt}/{max_retries} via {endpoint})...")
                         start_time = time.time()
                         with urllib.request.urlopen(req, timeout=360) as response:
                             raw_data = response.read().decode('utf-8')
@@ -197,7 +197,7 @@ class Command(BaseCommand):
 
                 # Fetch existing sites for this country to build an in-memory lookup cache
                 self.stdout.write("Fetching existing sites from database for in-memory deduplication...")
-                existing_sites = HistoricalSite.objects.filter(country=db_country_name)
+                existing_sites = HistoricalSite.objects.filter(country=country)
                 
                 lookup = {}
                 for s in existing_sites:
@@ -324,7 +324,7 @@ class Command(BaseCommand):
                         location = Point(float(lon), float(lat), srid=4326)
                         to_create.append(HistoricalSite(
                             name=name,
-                            country=db_country_name,
+                            country=country,
                             site_type=site_type,
                             location=location,
                             wikidata=wikidata,
@@ -369,13 +369,13 @@ class Command(BaseCommand):
                     HistoricalSite.objects.bulk_update(to_update, ['site_type', 'wikidata', 'description', 'osm_type', 'osm_id', 'boundary'], batch_size=1000)
 
                 self.stdout.write(self.style.SUCCESS(
-                    f"Finished {country['name']}: {added_count} sites added, {updated_count} sites updated."
+                    f"Finished {country.name}: {added_count} sites added, {updated_count} sites updated."
                 ))
                 
                 # Sleep briefly between requests to be polite to the free Overpass API
                 time.sleep(2)
 
             except Exception as e:
-                self.stdout.write(self.style.ERROR(f"Failed to harvest {country['name']}: {str(e)}"))
+                self.stdout.write(self.style.ERROR(f"Failed to harvest {country.name}: {str(e)}"))
         
         self.stdout.write(self.style.SUCCESS("\nSeeding complete!"))

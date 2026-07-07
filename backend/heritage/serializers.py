@@ -7,7 +7,12 @@ using DRF-GIS GeoFeatureModelSerializer, converting database columns to camelCas
 
 from rest_framework import serializers
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
-from .models import HistoricalSite
+from .models import HistoricalSite, Country
+
+class CountrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Country
+        fields = ('id', 'name', 'code', 'bbox')
 
 class HistoricalSiteListSerializer(GeoFeatureModelSerializer):
     """
@@ -16,6 +21,7 @@ class HistoricalSiteListSerializer(GeoFeatureModelSerializer):
     Produces a GeoJSON feature list payload where geometry holds coordinates (Point),
     and properties contains general metadata, omitting boundary outlines.
     """
+    country = serializers.CharField(source='country.name', read_only=True)
     englishName = serializers.CharField(source='english_name', read_only=True, allow_null=True)
     englishDescription = serializers.CharField(source='english_description', read_only=True, allow_null=True)
     osmType = serializers.CharField(source='osm_type', read_only=True, allow_null=True)
@@ -33,6 +39,7 @@ class HistoricalSiteDetailSerializer(GeoFeatureModelSerializer):
     Includes the site's boundary outlines (polygons or complex multi-polygons)
     mapped within the GeoJSON property fields.
     """
+    country = serializers.CharField(source='country.name', read_only=True)
     englishName = serializers.CharField(source='english_name', read_only=True, allow_null=True)
     englishDescription = serializers.CharField(source='english_description', read_only=True, allow_null=True)
     osmType = serializers.CharField(source='osm_type', read_only=True, allow_null=True)

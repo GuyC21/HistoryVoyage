@@ -8,7 +8,7 @@ Configures the Django REST Framework DefaultRouter to mount the historical sites
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from heritage.views import HistoricalSiteViewSet
+from heritage.views import HistoricalSiteViewSet, CountryViewSet
 from voyages.views import VoyageViewSet
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
@@ -17,6 +17,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 router = DefaultRouter()
 router.register(r'sites', HistoricalSiteViewSet, basename='historicalsite')
 router.register(r'voyages', VoyageViewSet, basename='voyage')
+router.register(r'countries', CountryViewSet, basename='country')
 
 urlpatterns = [
     # Django Administrative Portal interface.

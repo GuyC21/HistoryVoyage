@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '~/context/AuthContext'
 import { useVoyage } from '~/context/VoyageContext'
+import { backendApi } from '~/services/api'
 import heroBg from '~/assets/hero_bg.png'
 import styles from './Dashboard.module.css'
 
@@ -13,6 +14,29 @@ export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [countries, setCountries] = useState([])
+  const [selectedCountryId, setSelectedCountryId] = useState('')
+
+  useEffect(() => {
+    let active = true
+    const loadCountries = async () => {
+      try {
+        const data = await backendApi.fetchCountries()
+        if (active) {
+          setCountries(data)
+          if (data.length > 0) {
+            setSelectedCountryId(data[0].id)
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch countries:', err)
+      }
+    }
+    loadCountries()
+    return () => {
+      active = false
+    }
+  }, [])
 
   if (authLoading || voyageLoading) {
     return (
@@ -26,10 +50,10 @@ export default function Dashboard() {
 
   const handleCreate = async (e) => {
     e.preventDefault()
-    if (!newTitle.trim()) return
+    if (!newTitle.trim() || !selectedCountryId) return
     setIsSubmitting(true)
     try {
-      const voyage = await createVoyage(newTitle)
+      const voyage = await createVoyage(newTitle, selectedCountryId)
       setActiveVoyage(voyage)
       navigate('/explore')
     } catch (err) {
@@ -128,6 +152,22 @@ export default function Dashboard() {
                   autoFocus
                   required
                 />
+              </div>
+              <div className={styles.inputGroup}>
+                <label htmlFor="voyageCountry">Focus Country</label>
+                <select
+                  id="voyageCountry"
+                  value={selectedCountryId}
+                  onChange={e => setSelectedCountryId(e.target.value)}
+                  required
+                >
+                  <option value="" disabled>Select a country...</option>
+                  {countries.map(country => (
+                    <option key={country.id} value={country.id}>
+                      {country.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className={styles.modalActions}>
                 <button 

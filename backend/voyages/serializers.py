@@ -6,7 +6,8 @@ nesting minimal historical site details for the frontend.
 """
 
 from rest_framework import serializers
-from heritage.models import HistoricalSite
+from heritage.models import HistoricalSite, Country
+from heritage.serializers import CountrySerializer
 from .models import Voyage, VoyageStop
 
 class HistoricalSiteMinimalSerializer(serializers.ModelSerializer):
@@ -71,10 +72,19 @@ class VoyageSerializer(serializers.ModelSerializer):
     createdAt = serializers.DateTimeField(source='created_at', read_only=True)
     updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
     stops = VoyageStopSerializer(many=True, read_only=True)
+    focusCountry = CountrySerializer(source='focus_country', read_only=True)
+    focusCountryId = serializers.PrimaryKeyRelatedField(
+        queryset=Country.objects.all(),
+        source='focus_country',
+        write_only=True,
+        required=False,
+        allow_null=True,
+        help_text="The ID of the focus country."
+    )
 
     class Meta:
         model = Voyage
-        fields = ('id', 'title', 'createdAt', 'updatedAt', 'stops')
+        fields = ('id', 'title', 'createdAt', 'updatedAt', 'stops', 'focusCountry', 'focusCountryId')
 
 
 class AddSiteRequestSerializer(serializers.Serializer):

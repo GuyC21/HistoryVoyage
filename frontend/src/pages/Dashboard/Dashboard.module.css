@@ -244,7 +244,8 @@
   font-size: 0.9rem;
 }
 
-.inputGroup input {
+.inputGroup input,
+.inputGroup select {
   width: 100%;
   padding: 12px;
   border-radius: 8px;
@@ -255,10 +256,16 @@
   box-sizing: border-box;
 }
 
-.inputGroup input:focus {
+.inputGroup input:focus,
+.inputGroup select:focus {
   outline: none;
   border-color: var(--accent);
   background: rgba(255, 255, 255, 0.1);
+}
+
+.inputGroup select option {
+  background: #0f172a;
+  color: #fff;
 }
 
 .modalActions {
