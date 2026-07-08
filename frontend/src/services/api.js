@@ -103,6 +103,14 @@ export const backendApi = {
     return handleResponse(res, 'Failed to fetch nearby sites')
   },
 
+  /**
+   * Fetches all available countries.
+   */
+  fetchCountries: async (abortController) => {
+    const res = await apiFetch(`${API_BASE}/api/countries/`, { signal: abortController?.signal })
+    return handleResponse(res, 'Failed to fetch countries')
+  },
+
   fetchCurrentUser: async () => {
     const res = await apiFetch(`${API_BASE}/api/accounts/me/`)
     return handleResponse(res, 'Failed to fetch current user profile')
@@ -121,11 +129,11 @@ export const backendApi = {
    * 
    * @param {string} title - The title of the new voyage.
    */
-  createVoyage: async (title) => {
+  createVoyage: async (title, focusCountryId) => {
     const res = await apiFetch(`${API_BASE}/api/voyages/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title })
+      body: JSON.stringify({ title, focusCountryId })
     })
     return handleResponse(res, 'Failed to create voyage')
   },

@@ -10,10 +10,18 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.conf import settings
 
-from .models import HistoricalSite
-from .serializers import HistoricalSiteListSerializer, HistoricalSiteDetailSerializer
+from .models import HistoricalSite, Country
+from .serializers import HistoricalSiteListSerializer, HistoricalSiteDetailSerializer, CountrySerializer
 from .services import translate_site_details
 from .selectors import get_sites_in_bbox, search_sites_by_text, get_sites_nearby
+
+class CountryViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for listing and retrieving Country instances.
+    """
+    queryset = Country.objects.all()
+    serializer_class = CountrySerializer
+    pagination_class = None
 
 class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
     """

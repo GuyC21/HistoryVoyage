@@ -22,6 +22,14 @@ class Voyage(models.Model):
         max_length=255,
         help_text="User-defined title or name of the voyage."
     )
+    focus_country = models.ForeignKey(
+        'heritage.Country',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='voyages',
+        help_text="The country this voyage focuses on."
+    )
     created_at = models.DateTimeField(
         auto_now_add=True,
         help_text="Timestamp when the voyage was created."

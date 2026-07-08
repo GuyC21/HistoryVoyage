@@ -1,9 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '~/context/AuthContext';
 import heroBg from '~/assets/hero_bg.png';
 import styles from './Home.module.css';
 
 export default function Home() {
+  const { user } = useAuth();
+  const targetPath = user ? '/dashboard' : '/login';
   return (
     <div className={styles.homeContainer}>
       <img src={heroBg} alt="Ancient ruins under starry night" className={styles.heroBg} />
@@ -31,7 +34,7 @@ export default function Home() {
             </div>
           </div>
           
-          <Link to="/explore" className={styles.btnStart}>
+          <Link to={targetPath} className={styles.btnStart}>
             Start Your Voyage
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>

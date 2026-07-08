@@ -9,23 +9,24 @@ from django.db import transaction
 from django.db.models import Max
 from django.contrib.auth import get_user_model
 from rest_framework.exceptions import ValidationError, PermissionDenied
-from heritage.models import HistoricalSite
+from heritage.models import HistoricalSite, Country
 from .models import Voyage, VoyageStop
 
 User = get_user_model()
 
-def create_voyage(*, user: User, title: str) -> Voyage:
+def create_voyage(*, user: User, title: str, focus_country: Country = None) -> Voyage:
     """
     Creates a new Voyage instance for the specified user.
 
     Args:
         user (User): The user creating the voyage.
         title (str): The user-defined title of the voyage.
+        focus_country (Country, optional): The country this voyage focuses on.
 
     Returns:
         Voyage: The created Voyage database instance.
     """
-    return Voyage.objects.create(user=user, title=title)
+    return Voyage.objects.create(user=user, title=title, focus_country=focus_country)
 
 
 def add_site_to_voyage(*, user: User, voyage: Voyage, site: HistoricalSite) -> VoyageStop:

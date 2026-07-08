@@ -37,7 +37,8 @@ class VoyageViewSet(viewsets.ModelViewSet):
         Delegates the creation of a new Voyage to the service layer.
         """
         title = serializer.validated_data.get('title')
-        instance = create_voyage(user=self.request.user, title=title)
+        focus_country = serializer.validated_data.get('focus_country')
+        instance = create_voyage(user=self.request.user, title=title, focus_country=focus_country)
         serializer.instance = instance
 
     @extend_schema(

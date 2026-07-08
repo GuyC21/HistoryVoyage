@@ -4,7 +4,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework.exceptions import ValidationError, PermissionDenied
 
-from heritage.models import HistoricalSite
+from heritage.models import HistoricalSite, Country
 from .models import Voyage, VoyageStop
 from .services import create_voyage, add_site_to_voyage, reorder_voyage_stops, remove_site_from_voyage
 from .selectors import get_voyages_for_user, get_voyage_details
@@ -31,24 +31,30 @@ class VoyageIntegrationTests(APITestCase):
             password="testpassword123"
         )
 
+        # Create or retrieve country
+        self.country, _ = Country.objects.get_or_create(
+            name="Israel",
+            defaults={"code": "IL", "bbox": [29.4, 34.0, 33.5, 36.0]}
+        )
+
         # Create historical sites
         self.site_1 = HistoricalSite.objects.create(
             name="Ancient Castle",
             site_type="castle",
             location=Point(35.2137, 31.7683),  # Jerusalem
-            country="Israel"
+            country=self.country
         )
         self.site_2 = HistoricalSite.objects.create(
             name="Roman Ruins",
             site_type="ruins",
             location=Point(35.2170, 31.7700),
-            country="Israel"
+            country=self.country
         )
         self.site_3 = HistoricalSite.objects.create(
             name="Sacred Temple",
             site_type="holy_site",
             location=Point(35.2200, 31.7720),
-            country="Israel"
+            country=self.country
         )
 
         # Create initial voyage for user A via service
@@ -146,6 +152,24 @@ class VoyageIntegrationTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['title'], 'My API Voyage')
         self.assertEqual(Voyage.objects.filter(user=self.user_a).count(), 2)
+
+    def test_api_create_voyage_with_country(self):
+        """
+        Verifies POST /api/voyages/ successfully associates a focus country.
+        """
+        self.client.force_authenticate(user=self.user_a)
+        response = self.client.post('/api/voyages/', {
+            'title': 'My API Voyage with Country',
+            'focusCountryId': self.country.id
+        })
+        
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['title'], 'My API Voyage with Country')
+        self.assertEqual(response.data['focusCountry']['id'], self.country.id)
+        
+        # Verify in DB
+        voyage = Voyage.objects.get(pk=response.data['id'])
+        self.assertEqual(voyage.focus_country, self.country)
 
     def test_api_add_site_stop(self):
         """

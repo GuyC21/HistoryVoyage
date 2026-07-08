@@ -168,6 +168,45 @@ export default function MapExplorer() {
     setFilteredSites(filtered)
   }, [sites, activeFilter, isVoyageOnlyView, activeVoyage])
 
+  const isFirstVoyageLoad = useRef(true)
+
+  useEffect(() => {
+    isFirstVoyageLoad.current = true
+  }, [activeVoyage?.id])
+
+  // Automatically adjust map bounds to fit the focus country and all voyage stops
+  useEffect(() => {
+    if (!mapInstance || !activeVoyage) return
+
+    const coords = []
+
+    // 1. Add focus country bounding box corners
+    if (activeVoyage.focusCountry && activeVoyage.focusCountry.bbox) {
+      const [south, west, north, east] = activeVoyage.focusCountry.bbox
+      coords.push([south, west])
+      coords.push([north, east])
+    }
+
+    // 2. Add all stops coordinates
+    const stops = activeVoyage.stops || []
+    stops.forEach(stop => {
+      const details = stop.siteDetails
+      if (details && details.coordinates) {
+        coords.push([details.coordinates[0], details.coordinates[1]]) // [lat, lng]
+      }
+    })
+
+    if (coords.length > 0) {
+      const bounds = L.latLngBounds(coords)
+      if (isFirstVoyageLoad.current) {
+        mapInstance.fitBounds(bounds, { padding: [50, 50], maxZoom: 12, animate: false })
+        isFirstVoyageLoad.current = false
+      } else {
+        mapInstance.flyToBounds(bounds, { padding: [50, 50], maxZoom: 12 })
+      }
+    }
+  }, [mapInstance, activeVoyage])
+
 
 
   /**
