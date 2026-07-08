@@ -8,6 +8,7 @@ import MapExplorer from '~/pages/MapExplorer'
 import Dashboard from '~/pages/Dashboard/Dashboard'
 import Login from '~/pages/Auth/Login'
 import Signup from '~/pages/Auth/Signup'
+import ProtectedRoute from '~/components/ProtectedRoute'
 
 /**
  * Root application component.
@@ -23,8 +24,12 @@ function App() {
             {/* Main App Routes with navbar Layout */}
             <Route element={<Layout />}>
               <Route path="/" element={<Home />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/explore" element={<MapExplorer />} />
+              
+              {/* Protected Routes */}
+              <Route element={<ProtectedRoute />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/explore" element={<MapExplorer />} />
+              </Route>
             </Route>
 
             {/* Fullscreen Auth Routes (no global navbar) */}

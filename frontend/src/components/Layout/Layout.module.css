@@ -129,7 +129,16 @@
   border-radius: 9999px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.userBadge:hover {
+  background: var(--accent-border);
+  transform: translateY(-0.5px);
 }
 
 /* Home page navbar overrides for user elements */
@@ -139,31 +148,139 @@
   border-color: rgba(255, 255, 255, 0.25);
 }
 
-.btnSignout {
+.globalNavbar.navbarHome .userBadge:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* User Dropdown Styles */
+.navUserDropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.userIcon {
+  opacity: 0.85;
+}
+
+.userName {
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chevronIcon {
+  opacity: 0.7;
+  transition: transform 0.2s ease;
+}
+
+.chevronIcon.open {
+  transform: rotate(180deg);
+}
+
+.dropdownMenu {
+  box-sizing: border-box;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--bg-translucent);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  padding: 8px;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 1000;
+  animation: dropdownFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Home page navbar overrides for the dropdown menu */
+.globalNavbar.navbarHome .dropdownMenu {
+  background: rgba(15, 23, 42, 0.95);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.dropdownItem {
+  box-sizing: border-box;
   font-family: 'Inter', sans-serif;
   font-size: 14px;
-  font-weight: 600;
-  color: #ef4444;
+  font-weight: 500;
+  color: var(--text-h);
+  text-decoration: none;
   background: none;
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  padding: 8px 16px;
+  border: none;
+  padding: 10px 14px;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  transition: all 0.15s ease;
 }
 
-.btnSignout:hover {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.45);
-  transform: translateY(-1px);
+.dropdownItem:hover:not(:disabled) {
+  background: var(--accent-bg);
+  color: var(--accent);
 }
 
-.globalNavbar.navbarHome .btnSignout {
+.globalNavbar.navbarHome .dropdownItem {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.globalNavbar.navbarHome .dropdownItem:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.dropdownItem.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: var(--text);
+}
+
+.dropdownDivider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 8px;
+}
+
+.globalNavbar.navbarHome .dropdownDivider {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.btnDropdownSignout {
+  color: #ef4444;
+}
+
+.btnDropdownSignout:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #ef4444 !important;
+}
+
+.globalNavbar.navbarHome .btnDropdownSignout {
   color: #f87171;
-  border-color: rgba(248, 113, 113, 0.25);
 }
 
-.globalNavbar.navbarHome .btnSignout:hover {
-  background: rgba(248, 113, 113, 0.15);
+.globalNavbar.navbarHome .btnDropdownSignout:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.15) !important;
+  color: #f87171 !important;
 }
+
 

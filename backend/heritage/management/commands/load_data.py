@@ -238,14 +238,16 @@ class Command(BaseCommand):
                     
                     if not lat or not lon:
                         osm_type = el.get('type')
-                        if osm_type == 'way' and 'geometry' in el and el['geometry']:
-                            lat = sum(pt['lat'] for pt in el['geometry']) / len(el['geometry'])
-                            lon = sum(pt['lon'] for pt in el['geometry']) / len(el['geometry'])
+                        if osm_type == 'way' and el.get('geometry'):
+                            valid_pts = [pt for pt in el['geometry'] if pt is not None]
+                            if valid_pts:
+                                lat = sum(pt['lat'] for pt in valid_pts) / len(valid_pts)
+                                lon = sum(pt['lon'] for pt in valid_pts) / len(valid_pts)
                         elif osm_type == 'relation' and 'members' in el:
                             pts = []
                             for m in el['members']:
-                                if m.get('type') == 'way' and 'geometry' in m:
-                                    pts.extend(m['geometry'])
+                                if m and m.get('type') == 'way' and m.get('geometry'):
+                                    pts.extend(pt for pt in m['geometry'] if pt is not None)
                             if pts:
                                 lat = sum(pt['lat'] for pt in pts) / len(pts)
                                 lon = sum(pt['lon'] for pt in pts) / len(pts)
@@ -302,14 +304,18 @@ class Command(BaseCommand):
                     # Extract boundary coordinates for ways and relations
                     boundary = None
                     if osm_type == 'way':
-                        if 'geometry' in el:
-                            boundary = [[[pt['lat'], pt['lon']] for pt in el['geometry']]]
+                        if el.get('geometry'):
+                            valid_pts = [pt for pt in el['geometry'] if pt is not None]
+                            if valid_pts:
+                                boundary = [[[pt['lat'], pt['lon']] for pt in valid_pts]]
                     elif osm_type == 'relation':
                         if 'members' in el:
                             paths = []
                             for member in el['members']:
-                                if member.get('type') == 'way' and 'geometry' in member and member.get('role') != 'inner':
-                                    paths.append([[pt['lat'], pt['lon']] for pt in member['geometry']])
+                                if member and member.get('type') == 'way' and member.get('geometry') and member.get('role') != 'inner':
+                                    valid_pts = [pt for pt in member['geometry'] if pt is not None]
+                                    if valid_pts:
+                                        paths.append([[pt['lat'], pt['lon']] for pt in valid_pts])
                             if paths:
                                 boundary = paths
 
