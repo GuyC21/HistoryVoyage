@@ -30,7 +30,7 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
     Provides geographic and text filtering interfaces. Bounding box filters expect coordinate
     bounds, whereas search endpoints rank matched terms.
     """
-    queryset = HistoricalSite.objects.all()
+    queryset = HistoricalSite.objects.select_related('country').all()
     pagination_class = None
     
     def get_serializer_class(self):
@@ -71,6 +71,9 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
         - `limit`: Limits bounding box return counts (capped at 100).
         """
         queryset = super().get_queryset()
+        
+        if self.action != 'retrieve':
+            queryset = queryset.defer('boundary')
         
         # Filter by osm_type (e.g. osm_type=relation)
         osm_type = self.request.query_params.get('osm_type')
@@ -129,7 +132,8 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
             )
 
         try:
-            sites = get_sites_nearby(float(lat), float(lng), float(radius_m))
+            queryset = self.get_queryset()
+            sites = get_sites_nearby(queryset, float(lat), float(lng), float(radius_m))
             serializer = self.get_serializer(sites, many=True)
             return Response(serializer.data)
         except ValueError:

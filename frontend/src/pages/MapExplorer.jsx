@@ -201,8 +201,6 @@ export default function MapExplorer() {
       if (isFirstVoyageLoad.current) {
         mapInstance.fitBounds(bounds, { padding: [50, 50], maxZoom: 12, animate: false })
         isFirstVoyageLoad.current = false
-      } else {
-        mapInstance.flyToBounds(bounds, { padding: [50, 50], maxZoom: 12 })
       }
     }
   }, [mapInstance, activeVoyage])
@@ -239,6 +237,19 @@ export default function MapExplorer() {
   const handleSelectSite = (siteFeature) => {
     if (!siteFeature.geometry || !siteFeature.geometry.coordinates) return
     const [lng, lat] = siteFeature.geometry.coordinates
+
+    // Intercept cities: zoom to them without opening the detail drawer
+    if (siteFeature.properties?.site_type === 'city') {
+      if (siteFeature.properties.bbox && mapInstance) {
+        const [south, west, north, east] = siteFeature.properties.bbox
+        const bounds = L.latLngBounds([[south, west], [north, east]])
+        mapInstance.flyToBounds(bounds, { padding: [50, 50], maxZoom: 12 })
+      } else {
+        handleQuickJump(lat, lng)
+      }
+      return
+    }
+
     handleSiteClick({
       id: siteFeature.id,
       ...siteFeature.properties,

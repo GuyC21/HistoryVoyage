@@ -84,7 +84,7 @@ def search_sites_by_text(queryset: QuerySet, search_query: str, limit: int = 15)
     
     return queryset[:limit]
 
-def get_sites_nearby(lat: float, lng: float, radius_m: float) -> QuerySet:
+def get_sites_nearby(queryset: QuerySet, lat: float, lng: float, radius_m: float) -> QuerySet:
     """
     Retrieves historical sites situated within a given distance of a point.
 
@@ -92,6 +92,7 @@ def get_sites_nearby(lat: float, lng: float, radius_m: float) -> QuerySet:
     annotating each record with the calculated distance.
 
     Args:
+        queryset (QuerySet): Base query set of HistoricalSite instances to filter.
         lat (float): The latitude of the center search point.
         lng (float): The longitude of the center search point.
         radius_m (float): The maximum search radius in meters.
@@ -102,7 +103,7 @@ def get_sites_nearby(lat: float, lng: float, radius_m: float) -> QuerySet:
     """
     point = Point(float(lng), float(lat), srid=4326)
     
-    return HistoricalSite.objects.filter(
+    return queryset.filter(
         location__distance_lte=(point, D(m=radius_m))
     ).annotate(
         distance=Distance('location', point)
