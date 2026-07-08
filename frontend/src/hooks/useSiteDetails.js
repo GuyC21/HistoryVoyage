@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { backendApi } from '~/services/api'
 import { wikidataApi } from '~/services/wikidataApi'
 import { wikipediaApi } from '~/services/wikipediaApi'
@@ -38,7 +38,7 @@ export const useSiteDetails = (mapInstance, setActivePolygon) => {
    * 
    * @param {Object} siteDetails - Raw coordinate and identity parameters of target site.
    */
-  const handleSiteClick = async (siteDetails) => {
+  const handleSiteClick = useCallback(async (siteDetails) => {
     setActivePolygon(null)
 
     if (drawerAbortRef.current) {
@@ -62,13 +62,13 @@ export const useSiteDetails = (mapInstance, setActivePolygon) => {
     window.history.pushState({}, '', url)
 
     if (hasEnglishInDetails && !needsBackendFetch && !siteDetails.wikidata) {
-      if (mapInstance && siteDetails.coordinates) {
+      if (mapInstance && siteDetails.coordinates && !siteDetails.fromMap) {
         mapInstance.flyTo(siteDetails.coordinates, 17, { animate: true, duration: 2.5 })
       }
       return
     }
 
-    if (!needsBackendFetch && mapInstance && siteDetails.coordinates) {
+    if (!needsBackendFetch && mapInstance && siteDetails.coordinates && !siteDetails.fromMap) {
       mapInstance.flyTo(siteDetails.coordinates, 17, { animate: true, duration: 2.5 })
     }
 
@@ -103,7 +103,7 @@ export const useSiteDetails = (mapInstance, setActivePolygon) => {
                   }
                   return prev
                 })
-                if (mapInstance) {
+                if (mapInstance && !siteDetails.fromMap) {
                   try {
                     const polygonBounds = L.polygon(props.boundary).getBounds()
                     mapInstance.flyToBounds(polygonBounds, {
@@ -118,7 +118,7 @@ export const useSiteDetails = (mapInstance, setActivePolygon) => {
                 }
               } else {
                 // Backend fetched, but no boundary returned. Fly to point instead!
-                if (mapInstance && siteDetails.coordinates) {
+                if (mapInstance && siteDetails.coordinates && !siteDetails.fromMap) {
                   mapInstance.flyTo(siteDetails.coordinates, 17, { animate: true, duration: 2.5 })
                 }
               }
@@ -237,7 +237,7 @@ export const useSiteDetails = (mapInstance, setActivePolygon) => {
         return prev
       })
     }
-  }
+  }, [mapInstance, setActivePolygon])
 
   const closeDrawer = () => {
     setIsDrawerOpen(false)

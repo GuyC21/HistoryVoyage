@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import styles from './SearchBar.module.css'
+import { searchCities } from '../../services/nominatim'
 
 /**
  * SearchBar Component
@@ -51,6 +52,7 @@ export default function SearchBar({ onSelectSite }) {
       case 'holy_site': return '⛪'
       case 'monument': return '🗽'
       case 'archaeological': return '🏺'
+      case 'city': return '🏙️'
       default: return '📍'
     }
   }
@@ -94,29 +96,36 @@ export default function SearchBar({ onSelectSite }) {
     const controller = new AbortController()
     abortControllerRef.current = controller
 
-    fetch(`${API_BASE}/api/sites/?search=${encodeURIComponent(searchVal)}`, {
-      signal: controller.signal
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Search request failed')
-        return res.json()
+    Promise.all([
+      fetch(`${API_BASE}/api/sites/?search=${encodeURIComponent(searchVal)}`, {
+        signal: controller.signal
+      }).then(res => {
+        if (!res.ok) throw new Error('Search request failed');
+        return res.json().then(data => data.features || []);
+      }).catch(err => {
+        if (err.name !== 'AbortError') console.error('Error fetching site suggestions:', err);
+        return [];
+      }),
+      searchCities(searchVal, controller.signal).catch(err => {
+        if (err.name !== 'AbortError') console.error('Error fetching city suggestions:', err);
+        return [];
       })
-      .then((data) => {
-        setSuggestions(data.features || [])
-        setIsOpen(true)
-        setActiveIndex(-1)
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') {
-          console.error('Error fetching suggestions:', err)
-          setSuggestions([])
-        }
+    ])
+      .then(([siteFeatures, cityFeatures]) => {
+        if (controller.signal.aborted) return;
+        
+        // Combine city and site suggestions
+        const allSuggestions = [...cityFeatures, ...siteFeatures];
+        
+        setSuggestions(allSuggestions);
+        setIsOpen(true);
+        setActiveIndex(-1);
       })
       .finally(() => {
         if (!controller.signal.aborted) {
-          setLoading(false)
+          setLoading(false);
         }
-      })
+      });
   }
 
   const handleInputChange = (e) => {

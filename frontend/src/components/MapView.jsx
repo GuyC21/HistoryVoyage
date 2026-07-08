@@ -134,6 +134,34 @@ function MapEventsHandler({ onBoundsChange, onZoomChange, minZoomGate }) {
 }
 
 /**
+ * SiteMarker Component
+ * Memoized individual site marker to prevent re-attaching Leaflet event handlers 
+ * on every map pan or zoom.
+ */
+const SiteMarker = React.memo(({ site, isSelected, hasBoundary, onSiteClick }) => {
+  const [lng, lat] = site.geometry.coordinates
+
+  const eventHandlers = React.useMemo(() => ({
+    click: () => {
+      onSiteClick({
+        id: site.id,
+        ...site.properties,
+        coordinates: [lat, lng],
+        fromMap: true
+      })
+    }
+  }), [site.id, site.properties, lat, lng, onSiteClick])
+
+  return (
+    <Marker
+      position={[lat, lng]}
+      icon={getMarkerIcon(site.properties?.site_type, isSelected, hasBoundary)}
+      eventHandlers={eventHandlers}
+    />
+  )
+})
+
+/**
  * MapView Component
  * Renders the reactive Leaflet layers (basemap tile layers, dynamic markers, OS dark theme handlers, and viewport bounds).
  *
@@ -233,27 +261,19 @@ export default function MapView({
         // Check if site has valid coordinates
         // DRF-GIS GeoJSON output has geometry.coordinates as [lng, lat]
         if (!site.geometry || !site.geometry.coordinates) return null
-        const [lng, lat] = site.geometry.coordinates
+        
         const isSelected = selectedSite && selectedSite.id === site.id
         
         // We consider a site as having a boundary outline if its osmType is way or relation
         const hasBoundary = site.properties?.osmType === 'way' || site.properties?.osmType === 'relation'
 
         return (
-          <Marker
+          <SiteMarker
             key={site.id}
-            position={[lat, lng]}
-            icon={getMarkerIcon(site.properties?.site_type, isSelected, hasBoundary)}
-            eventHandlers={{
-              click: () => {
-                // Return details as flat properties + geometry structure
-                onSiteClick({
-                  id: site.id,
-                  ...site.properties,
-                  coordinates: [lat, lng]
-                })
-              }
-            }}
+            site={site}
+            isSelected={isSelected}
+            hasBoundary={hasBoundary}
+            onSiteClick={onSiteClick}
           />
         )
       })}
