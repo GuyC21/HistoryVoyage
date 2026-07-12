@@ -11,6 +11,8 @@ import { useDeepLink } from '~/hooks/useDeepLink'
 import { useSiteDetails } from '~/hooks/useSiteDetails'
 import { useMapData } from '~/hooks/useMapData'
 import { useVoyage } from '~/context/VoyageContext'
+import { useAuth } from '~/context/AuthContext'
+import { supabase } from '~/services/supabase'
 
 // Custom pulsing blue icon for user location pin
 const userLocationIcon = L.divIcon({
@@ -55,8 +57,35 @@ export default function MapExplorer() {
   /** @type {string} Selected category type ID (e.g. 'castle', 'ruins', 'all'). */
   const [activeFilter, setActiveFilter] = useState('all')
   
+  const { user } = useAuth()
+
   /** @type {string} Current interface language ('en' for English translation, 'local'). */
-  const [languageMode, setLanguageMode] = useState('en')
+  const [languageMode, setLanguageMode] = useState(() => {
+    return localStorage.getItem('app-language') || 'en'
+  })
+
+  // Sync languageMode state when user metadata is loaded
+  useEffect(() => {
+    if (user?.user_metadata?.language_mode) {
+      setLanguageMode(user.user_metadata.language_mode)
+    }
+  }, [user])
+
+  const handleLanguageChange = async (newMode) => {
+    setLanguageMode(newMode)
+    localStorage.setItem('app-language', newMode)
+    if (user) {
+      try {
+        await supabase.auth.updateUser({
+          data: {
+            language_mode: newMode
+          }
+        })
+      } catch (err) {
+        console.error('Failed to sync language preference to Supabase:', err)
+      }
+    }
+  }
   
   /** @type {Array<Array<number>>|null} Active site layout polygon coordinates. */
   const [activePolygon, setActivePolygon] = useState(null)
@@ -273,7 +302,7 @@ export default function MapExplorer() {
       {/* Floating Header Card */}
       <HeaderCard
         languageMode={languageMode}
-        setLanguageMode={setLanguageMode}
+        setLanguageMode={handleLanguageChange}
         zoom={zoom}
         minZoomGate={MIN_ZOOM_GATE}
         visibleSitesCount={filteredSites.length}
@@ -463,7 +492,7 @@ export default function MapExplorer() {
         onClose={closeDrawer}
         isLoading={drawerLoading}
         languageMode={languageMode}
-        setLanguageMode={setLanguageMode}
+        setLanguageMode={handleLanguageChange}
         userLocation={userLocation}
         onToast={setToast}
       />

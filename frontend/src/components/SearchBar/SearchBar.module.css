@@ -97,7 +97,8 @@
   padding: 6px 0;
   list-style: none;
   background: var(--bg-translucent);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: var(--shadow-lg);

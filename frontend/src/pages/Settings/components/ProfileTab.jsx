@@ -26,6 +26,11 @@ export default function ProfileTab() {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
+    if (!firstName.trim() || !lastName.trim() || !email.trim()) {
+      setStatus({ type: 'error', message: 'First name, last name, and email cannot be empty.' });
+      return;
+    }
+
     setLoading(true);
     setStatus(null);
     
@@ -33,7 +38,15 @@ export default function ProfileTab() {
       // 1. Update Name in Django
       await backendApi.updateCurrentUser(firstName, lastName);
       
-      // 2. Update Email in Supabase if changed
+      // 2. Update Name in Supabase metadata to prevent Django overwriting it on next request
+      const { error: nameError } = await supabase.auth.updateUser({
+        data: {
+          full_name: `${firstName} ${lastName}`.trim()
+        }
+      });
+      if (nameError) throw nameError;
+      
+      // 3. Update Email in Supabase if changed
       if (user.email !== email) {
         const { error } = await supabase.auth.updateUser({ email });
         if (error) throw error;
@@ -73,6 +86,8 @@ export default function ProfileTab() {
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             placeholder="Jane"
+            disabled={loading}
+            required
           />
         </div>
 
@@ -85,6 +100,8 @@ export default function ProfileTab() {
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
             placeholder="Doe"
+            disabled={loading}
+            required
           />
         </div>
 
@@ -97,6 +114,8 @@ export default function ProfileTab() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="jane@example.com"
+            disabled={loading}
+            required
           />
         </div>
 

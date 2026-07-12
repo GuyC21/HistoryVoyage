@@ -6,8 +6,8 @@
   width: 320px;
   z-index: 15; /* Higher than Map but same layer level as SiteDrawer */
   background: var(--bg-translucent);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-lg);
   border-radius: 20px;

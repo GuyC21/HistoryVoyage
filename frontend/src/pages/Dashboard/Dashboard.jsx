@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '~/context/AuthContext'
 import { useVoyage } from '~/context/VoyageContext'
 import { backendApi } from '~/services/api'
-import heroBg from '~/assets/hero_bg.png'
 import styles from './Dashboard.module.css'
 
 export default function Dashboard() {
@@ -41,8 +40,6 @@ export default function Dashboard() {
   if (authLoading || voyageLoading) {
     return (
       <div className={styles.dashboardContainer} style={{ justifyContent: 'center', alignItems: 'center' }}>
-        <img src={heroBg} alt="Ancient ruins under starry night" className={styles.heroBg} />
-        <div className={styles.heroOverlay}></div>
         <div className="spinner" style={{ zIndex: 10 }}></div>
       </div>
     )
@@ -83,9 +80,6 @@ export default function Dashboard() {
 
   return (
     <div className={styles.dashboardContainer}>
-      <img src={heroBg} alt="Ancient ruins under starry night" className={styles.heroBg} />
-      <div className={styles.heroOverlay}></div>
-
       <div className={styles.scrollBody}>
         <div className={styles.dashboardContent}>
           <header className={styles.header}>

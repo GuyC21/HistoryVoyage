@@ -5,7 +5,8 @@
   left: 20px;
   z-index: 10;
   background: var(--bg-translucent);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-lg);
   border-radius: 16px;
@@ -155,7 +156,8 @@
 /* Active Voyage Panel and Segmented Control */
 .voyagePanel {
   background: var(--bg-translucent);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px 14px;

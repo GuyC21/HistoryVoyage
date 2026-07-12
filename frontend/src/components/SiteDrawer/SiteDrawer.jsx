@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { getRoadDistance, formatDistance } from '~/utils/distance'
 import { useVoyage } from '~/context/VoyageContext'
+import { useAuth } from '~/context/AuthContext'
+import { supabase } from '~/services/supabase'
 import styles from './SiteDrawer.module.css'
 
 /**
@@ -28,8 +30,35 @@ export default function SiteDrawer({
   userLocation,
   onToast
 }) {
+  const { user } = useAuth()
+
   /** @type {string} Unit selection: 'km' (kilometers) or 'mi' (miles). */
-  const [distanceUnit, setDistanceUnit] = useState('km')
+  const [distanceUnit, setDistanceUnit] = useState(() => {
+    return localStorage.getItem('app-distance-unit') || 'km'
+  })
+
+  // Sync distanceUnit state when user metadata is loaded
+  useEffect(() => {
+    if (user?.user_metadata?.distance_unit) {
+      setDistanceUnit(user.user_metadata.distance_unit)
+    }
+  }, [user])
+
+  const handleDistanceUnitChange = async (newUnit) => {
+    setDistanceUnit(newUnit)
+    localStorage.setItem('app-distance-unit', newUnit)
+    if (user) {
+      try {
+        await supabase.auth.updateUser({
+          data: {
+            distance_unit: newUnit
+          }
+        })
+      } catch (err) {
+        console.error('Failed to sync distance unit to Supabase:', err)
+      }
+    }
+  }
 
   /**
    * @type {Object|null} Resolved driving/air distance details.
@@ -200,7 +229,7 @@ export default function SiteDrawer({
                       {distanceData.isAir && <span style={{ opacity: 0.6, fontSize: '0.85em', marginLeft: '4px', fontWeight: 'normal' }}>(air distance)</span>}
                     </span>
                     <button 
-                      onClick={() => setDistanceUnit(prev => prev === 'km' ? 'mi' : 'km')}
+                      onClick={() => handleDistanceUnitChange(distanceUnit === 'km' ? 'mi' : 'km')}
                       style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-translucent)', cursor: 'pointer', color: 'var(--text-h)', marginLeft: 'auto' }}
                       title={`Switch to ${distanceUnit === 'km' ? 'miles' : 'kilometers'}`}
                     >

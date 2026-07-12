@@ -3,7 +3,7 @@
   display: flex;
   height: 100%;
   width: 100%;
-  padding: 32px;
+  padding: 100px 32px 32px 32px;
   box-sizing: border-box;
   justify-content: center;
   align-items: flex-start;
@@ -15,7 +15,8 @@
   width: 100%;
   max-width: 1000px;
   background: var(--bg-translucent);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--border);
   border-radius: 16px;
   box-shadow: var(--shadow-lg);
@@ -203,35 +204,100 @@
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
+.backButton {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.2s ease;
+  margin-top: auto;
+}
+
+.backButton:hover {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.mobileSettingsContainer {
+  display: none;
+}
+
 /* Responsiveness */
 @media (max-width: 768px) {
   .settingsPage {
-    padding: 16px;
+    padding: 100px 16px 32px 16px;
+    align-items: flex-start; /* Keep aligned to top on mobile so it respects padding-top and does not slide under navbar */
   }
   
   .settingsContainer {
-    flex-direction: column;
-  }
-  
-  .sidebar {
-    width: 100%;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    flex-direction: row;
-    overflow-x: auto;
-    padding: 16px;
-  }
-  
-  .sidebarHeader {
     display: none;
   }
   
-  .tabButton {
-    white-space: nowrap;
+  .mobileSettingsContainer {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 600px;
+    gap: 20px;
+    animation: fadeUp 0.3s ease-out;
   }
   
-  .contentArea {
-    padding: 24px 16px;
+  .mobileHeader {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  
+  .mobileBackBtn {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    padding: 6px 0;
+    transition: all 0.2s ease;
+  }
+  
+  .mobileBackBtn:hover {
+    opacity: 0.8;
+  }
+  
+  .mobileTitle {
+    font-family: 'Outfit', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-h);
+    margin: 0;
+  }
+  
+  .mobileSectionsList {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .mobileSectionCard {
+    background: var(--bg-translucent);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
   }
   
   .formInput {

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '~/context/AuthContext';
+import { useTheme } from '~/hooks/useTheme';
+import heroBgDark from '~/assets/hero_bg.png';
+import heroBgLight from '~/assets/hero_bg_light.png';
 import styles from './Layout.module.css';
 
 /**
@@ -19,6 +22,11 @@ export default function Layout() {
   const isDashboard = location.pathname === '/dashboard';
   const isDarkNavbar = isHome || isDashboard;
   const { user, djangoUser, signOut } = useAuth();
+  const { isDarkMode } = useTheme();
+
+  const isExplore = location.pathname === '/explore';
+  const showHeroBg = !isExplore;
+  const heroBg = isDarkMode ? heroBgDark : heroBgLight;
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -54,79 +62,130 @@ export default function Layout() {
 
   return (
     <div className={styles.appLayout}>
-      <nav className={`${styles.globalNavbar} ${isDarkNavbar ? styles.navbarHome : ''}`}>
-        <Link to="/" className={styles.navBrand}>
-          🗺️ HistoryVoyage
-        </Link>
-        
-        {user ? (
-          <div className={styles.navUserDropdown} ref={dropdownRef}>
-            <button 
-              className={styles.userBadge} 
-              onClick={() => setDropdownOpen(!dropdownOpen)}
-              aria-expanded={dropdownOpen}
-              title={user.email}
-            >
-              {/* 
-                User icon sourced from Feather Icons (https://feathericons.com/)
-                Copyright (c) 2013-2017 Cole Bemis
-                Licensed under the MIT License: https://opensource.org/licenses/MIT
-              */}
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.userIcon}>
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>
+      {!isExplore && (
+        <nav className={`${styles.globalNavbar} ${isDarkNavbar ? styles.navbarHome : ''}`}>
+          <Link to="/" className={styles.navBrand}>
+            🗺️ HistoryVoyage
+          </Link>
+          
+          {user ? (
+            <div className={styles.navUserDropdown} ref={dropdownRef}>
+              <button 
+                className={styles.userBadge} 
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                aria-expanded={dropdownOpen}
+                title={user.email}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.userIcon}>
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                
+                <span className={styles.userName}>{getUserDisplayName()}</span>
+                
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`${styles.chevronIcon} ${dropdownOpen ? styles.open : ''}`}>
+                  <path d="m6 9 6 6 6-6"/>
+                </svg>
+              </button>
               
-              <span className={styles.userName}>{getUserDisplayName()}</span>
-              
-              {/* 
-                Chevron icon sourced from Feather Icons (https://feathericons.com/)
-                Copyright (c) 2013-2017 Cole Bemis
-                Licensed under the MIT License: https://opensource.org/licenses/MIT
-              */}
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`${styles.chevronIcon} ${dropdownOpen ? styles.open : ''}`}>
-                <path d="m6 9 6 6 6-6"/>
-              </svg>
-            </button>
+              {dropdownOpen && (
+                <div className={styles.dropdownMenu}>
+                  <Link 
+                    to="/dashboard" 
+                    className={styles.dropdownItem}
+                    onClick={() => setDropdownOpen(false)}
+                  >
+                    🗺️ Voyages
+                  </Link>
+                  <Link 
+                    to="/settings" 
+                    className={styles.dropdownItem}
+                    onClick={() => setDropdownOpen(false)}
+                  >
+                    ⚙️ Settings
+                  </Link>
+                  <div className={styles.dropdownDivider}></div>
+                  <button 
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      handleSignOut();
+                    }} 
+                    className={`${styles.dropdownItem} ${styles.btnDropdownSignout}`}
+                  >
+                    🚪 Log Out
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className={styles.navActions}>
+              <Link to="/login" className={styles.btnNav}>Log In</Link>
+              <Link to="/signup" className={`${styles.btnNav} ${styles.btnPrimary}`}>Sign Up</Link>
+            </div>
+          )}
+        </nav>
+      )}
+
+      {isExplore && user && (
+        <div className={styles.floatingUserDropdownWrapper} ref={dropdownRef}>
+          <button 
+            className={styles.userBadge} 
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            aria-expanded={dropdownOpen}
+            title={user.email}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.userIcon}>
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
             
-            {dropdownOpen && (
-              <div className={styles.dropdownMenu}>
-                <Link 
-                  to="/dashboard" 
-                  className={styles.dropdownItem}
-                  onClick={() => setDropdownOpen(false)}
-                >
-                  🗺️ Voyages
-                </Link>
-                <Link 
-                  to="/settings" 
-                  className={styles.dropdownItem}
-                  onClick={() => setDropdownOpen(false)}
-                >
-                  ⚙️ Settings
-                </Link>
-                <div className={styles.dropdownDivider}></div>
-                <button 
-                  onClick={() => {
-                    setDropdownOpen(false);
-                    handleSignOut();
-                  }} 
-                  className={`${styles.dropdownItem} ${styles.btnDropdownSignout}`}
-                >
-                  🚪 Log Out
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className={styles.navActions}>
-            <Link to="/login" className={styles.btnNav}>Log In</Link>
-            <Link to="/signup" className={`${styles.btnNav} ${styles.btnPrimary}`}>Sign Up</Link>
-          </div>
-        )}
-      </nav>
+            <span className={styles.userName}>{getUserDisplayName()}</span>
+            
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`${styles.chevronIcon} ${dropdownOpen ? styles.open : ''}`}>
+              <path d="m6 9 6 6 6-6"/>
+            </svg>
+          </button>
+          
+          {dropdownOpen && (
+            <div className={styles.dropdownMenu}>
+              <Link 
+                to="/dashboard" 
+                className={styles.dropdownItem}
+                onClick={() => setDropdownOpen(false)}
+              >
+                🗺️ Voyages
+              </Link>
+              <Link 
+                to="/settings" 
+                className={styles.dropdownItem}
+                onClick={() => setDropdownOpen(false)}
+              >
+                ⚙️ Settings
+              </Link>
+              <div className={styles.dropdownDivider}></div>
+              <button 
+                onClick={() => {
+                  setDropdownOpen(false);
+                  handleSignOut();
+                }} 
+                className={`${styles.dropdownItem} ${styles.btnDropdownSignout}`}
+              >
+                🚪 Log Out
+              </button>
+            </div>
+          )}
+        </div>
+      )}
       <main className={styles.layoutContent}>
-        <Outlet />
+        {showHeroBg && (
+          <>
+            <img src={heroBg} alt="Ancient ruins background" className={styles.layoutBg} />
+            <div className={styles.layoutOverlay}></div>
+          </>
+        )}
+        <div className={styles.pageWrapper}>
+          <Outlet />
+        </div>
       </main>
     </div>
   );

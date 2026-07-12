@@ -218,10 +218,9 @@ export default function MapView({
     return () => observer.disconnect();
   }, [])
 
-  // CartoDB Tile Providers (rendered as vector-styled raster map tiles)
-  // We use light tiles as the base, and apply a CSS filter for dark mode to get a beautiful slate-blue map
-  // instead of the stark black CartoDB Dark Matter map.
-  const lightTiles = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+  const lightTiles = isDarkMode 
+    ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
   
   /** @type {string} Attribution label required for OpenStreetMap and CartoDB usage guidelines. */
   const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'

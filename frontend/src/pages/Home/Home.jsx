@@ -1,17 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '~/context/AuthContext';
-import heroBg from '~/assets/hero_bg.png';
 import styles from './Home.module.css';
 
 export default function Home() {
   const { user } = useAuth();
   const targetPath = user ? '/dashboard' : '/login';
+
   return (
     <div className={styles.homeContainer}>
-      <img src={heroBg} alt="Ancient ruins under starry night" className={styles.heroBg} />
-      <div className={styles.heroOverlay}></div>
-      
       <div className={styles.homeScrollBody}>
         <div className={styles.heroContent}>
           <h1 className={styles.heroTitle}>Unearth the Past</h1>

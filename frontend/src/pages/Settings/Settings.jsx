@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import styles from './Settings.module.css';
 import ProfileTab from './components/ProfileTab';
 import SecurityTab from './components/SecurityTab';
@@ -22,6 +23,7 @@ export default function Settings() {
 
   return (
     <div className={styles.settingsPage}>
+      {/* Desktop Tabbed Settings Card */}
       <div className={styles.settingsContainer}>
         <aside className={styles.sidebar}>
           <div className={styles.sidebarHeader}>Settings</div>
@@ -58,11 +60,47 @@ export default function Settings() {
             </svg>
             Preferences
           </button>
+
+          <Link to="/dashboard" className={styles.backButton}>
+            <svg className={styles.tabIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Back to Voyages
+          </Link>
         </aside>
 
         <main className={styles.contentArea}>
           {renderContent()}
         </main>
+      </div>
+
+      {/* Mobile Unified Vertical Scroll Settings */}
+      <div className={styles.mobileSettingsContainer}>
+        <div className={styles.mobileHeader}>
+          <Link to="/dashboard" className={styles.mobileBackBtn}>
+            <svg className={styles.tabIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Back to Voyages
+          </Link>
+          <h1 className={styles.mobileTitle}>Settings</h1>
+        </div>
+
+        <div className={styles.mobileSectionsList}>
+          <div className={styles.mobileSectionCard}>
+            <ProfileTab />
+          </div>
+          
+          <div className={styles.mobileSectionCard}>
+            <SecurityTab />
+          </div>
+          
+          <div className={styles.mobileSectionCard}>
+            <PreferencesTab />
+          </div>
+        </div>
       </div>
     </div>
   );
