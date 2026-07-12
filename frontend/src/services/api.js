@@ -117,6 +117,18 @@ export const backendApi = {
   },
 
   /**
+   * Updates the current user's profile details.
+   */
+  updateCurrentUser: async (firstName, lastName) => {
+    const res = await apiFetch(`${API_BASE}/api/accounts/me/`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ first_name: firstName, last_name: lastName })
+    })
+    return handleResponse(res, 'Failed to update user profile')
+  },
+
+  /**
    * Fetches all voyages belonging to the authenticated user.
    */
   fetchVoyages: async () => {

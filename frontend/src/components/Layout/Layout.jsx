@@ -98,13 +98,13 @@ export default function Layout() {
                 >
                   🗺️ Voyages
                 </Link>
-                <button 
-                  className={`${styles.dropdownItem} ${styles.disabled}`}
-                  disabled
-                  title="Settings coming soon"
+                <Link 
+                  to="/settings" 
+                  className={styles.dropdownItem}
+                  onClick={() => setDropdownOpen(false)}
                 >
-                  ⚙️ Settings (Coming Soon)
-                </button>
+                  ⚙️ Settings
+                </Link>
                 <div className={styles.dropdownDivider}></div>
                 <button 
                   onClick={() => {

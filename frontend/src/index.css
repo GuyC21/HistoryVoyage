@@ -2,16 +2,17 @@
 @import "leaflet/dist/leaflet.css";
 
 :root {
-  --text: #6b7280;
-  --text-h: #111827;
-  --bg: #ffffff;
-  --bg-translucent: rgba(255, 255, 255, 0.8);
-  --border: #e5e7eb;
-  --accent: #aa3bff;
-  --accent-hover: #8e2bde;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.3);
-  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  /* Dark mode variables (DEFAULT) */
+  --text: #9ca3af;
+  --text-h: #f3f4f6;
+  --bg: #0f172a;
+  --bg-translucent: rgba(15, 23, 42, 0.85);
+  --border: #1e293b;
+  --accent: #c084fc;
+  --accent-hover: #a855f7;
+  --accent-bg: rgba(192, 132, 252, 0.15);
+  --accent-border: rgba(192, 132, 252, 0.4);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
   --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
   
   /* Category Colors */
@@ -26,19 +27,18 @@
   --mono: ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #0f172a;
-    --bg-translucent: rgba(15, 23, 42, 0.85);
-    --border: #1e293b;
-    --accent: #c084fc;
-    --accent-hover: #a855f7;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.4);
-    --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
-  }
+:root[data-theme='light'] {
+  /* Light mode variables */
+  --text: #6b7280;
+  --text-h: #111827;
+  --bg: #ffffff;
+  --bg-translucent: rgba(255, 255, 255, 0.8);
+  --border: #e5e7eb;
+  --accent: #aa3bff;
+  --accent-hover: #8e2bde;
+  --accent-bg: rgba(170, 59, 255, 0.1);
+  --accent-border: rgba(170, 59, 255, 0.3);
+  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
 }
 
 html, body, #root {
@@ -102,6 +102,11 @@ html, body, #root {
 
 .leaflet-bar {
   border: none !important;
+}
+
+/* Dark Mode Map Filter */
+.dark-map-filter {
+  filter: invert(95%) hue-rotate(200deg) brightness(100%) contrast(90%) saturate(120%);
 }
 
 /* Custom Marker Pins */
