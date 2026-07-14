@@ -11,53 +11,67 @@ const NOMINATIM_BASE_URL = 'https://nominatim.openstreetmap.org';
  * @param {AbortSignal} signal - Abort signal to cancel the fetch request.
  * @returns {Promise<Array<Object>>} A promise resolving to an array of site-like feature objects.
  */
-export const searchCities = async (query, signal) => {
+export const searchCities = async (query, signal, countryCode = null) => {
   if (!query.trim()) return [];
 
-  const url = new URL(`${NOMINATIM_BASE_URL}/search`);
-  url.searchParams.append('city', query);
+  // Use Open-Meteo Geocoding API for robust city autocomplete (no API key required)
+  const url = new URL(`https://geocoding-api.open-meteo.com/v1/search`);
+  url.searchParams.append('name', query);
+  url.searchParams.append('count', '100'); // Fetch enough to filter client-side
+  url.searchParams.append('language', 'en');
   url.searchParams.append('format', 'json');
-  url.searchParams.append('limit', '5');
-  url.searchParams.append('addressdetails', '1');
 
-  const response = await fetch(url.toString(), {
-    signal,
-    headers: {
-      // Nominatim requires a valid user agent
-      'User-Agent': 'HistoryVoyageApp/1.0 (frontend client)'
-    }
-  });
+  const response = await fetch(url.toString(), { signal });
 
   if (!response.ok) {
-    throw new Error('Nominatim search request failed');
+    throw new Error('City search request failed');
   }
 
   const data = await response.json();
+  if (!data.results) return [];
 
-  // Map Nominatim results to the GeoJSON-like structure used by SearchBar
-  return data.map((item) => {
-    // Nominatim bounding box: [south, north, west, east]
-    // Note: Some places use [min_lat, max_lat, min_lon, max_lon]
-    const [minLat, maxLat, minLon, maxLon] = item.boundingbox.map(parseFloat);
-    const lat = parseFloat(item.lat);
-    const lon = parseFloat(item.lon);
+  let results = data.results;
 
-    const country = item.address?.country || item.display_name.split(',').pop().trim();
-    const name = item.name || item.display_name.split(',')[0];
+  // Strictly filter the results to the selected country if provided
+  if (countryCode) {
+    results = results.filter(
+      item => item.country_code && item.country_code.toLowerCase() === countryCode.toLowerCase()
+    );
+  }
 
+  // Map Open-Meteo results to the expected format
+  return results.map((item) => {
+    const lat = item.latitude;
+    const lon = item.longitude;
+
+    // Open-Meteo returns coordinates, but MapExplorer needs a bounding box to fly to.
+    // Create a synthetic bounding box roughly 10km across (~0.05 degrees)
+    const bbox = [
+      lat - 0.05, // minLat (south)
+      lon - 0.05, // minLon (west)
+      lat + 0.05, // maxLat (north)
+      lon + 0.05  // maxLon (east)
+    ];
+
+    // Construct a clean display name (e.g. "Corfu, Ionian Islands, Greece")
+    const parts = [item.name];
+    if (item.admin1 && item.admin1 !== item.name) parts.push(item.admin1);
+    if (item.country) parts.push(item.country);
+    
     return {
-      id: `city-${item.place_id}`,
+      id: `city-${item.id}`,
       type: 'Feature',
       geometry: {
         type: 'Point',
         coordinates: [lon, lat] // GeoJSON is [lng, lat]
       },
       properties: {
-        name: name,
-        englishName: name, // Fallback
-        country: country,
+        name: item.name,
+        englishName: item.name, // Fallback
+        country: item.country,
         site_type: 'city',
-        bbox: [minLat, minLon, maxLat, maxLon], // Custom property to hold bbox [south, west, north, east]
+        bbox: bbox, // Custom property to hold synthetic bbox
+        display_name: parts.join(', ') // Add the rich display name we constructed
       }
     };
   });

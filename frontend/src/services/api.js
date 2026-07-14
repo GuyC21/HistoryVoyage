@@ -90,6 +90,24 @@ export const backendApi = {
   },
 
   /**
+   * Updates a historical site's Wikidata entity ID (requires Admin permissions).
+   * 
+   * @param {string|number} siteId - Target database site primary key ID.
+   * @param {string|null} wikidataId - The new Wikidata identifier (e.g. Q186326) or null.
+   * @returns {Promise<Object>} The updated site database detail payload.
+   */
+  updateSiteWikidata: async (siteId, wikidataId) => {
+    const res = await apiFetch(`${API_BASE}/api/sites/${siteId}/update-wikidata/`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ wikidata: wikidataId })
+    })
+    return handleResponse(res, 'Failed to update Wikidata ID')
+  },
+
+  /**
    * Queries nearby historical sites situated within a given radius.
    * 
    * @param {number} lat - Center latitude.
@@ -141,11 +159,18 @@ export const backendApi = {
    * 
    * @param {string} title - The title of the new voyage.
    */
-  createVoyage: async (title, focusCountryId) => {
+  createVoyage: async (title, focusCountryId, focusCity = null, focusCityLatitude = null, focusCityLongitude = null, focusCityBbox = null) => {
     const res = await apiFetch(`${API_BASE}/api/voyages/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, focusCountryId })
+      body: JSON.stringify({ 
+        title, 
+        focusCountryId,
+        focusCity,
+        focusCityLatitude,
+        focusCityLongitude,
+        focusCityBbox
+      })
     })
     return handleResponse(res, 'Failed to create voyage')
   },

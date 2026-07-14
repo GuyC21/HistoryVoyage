@@ -209,8 +209,12 @@ export default function MapExplorer() {
 
     const coords = []
 
-    // 1. Add focus country bounding box corners
-    if (activeVoyage.focusCountry && activeVoyage.focusCountry.bbox) {
+    // 1. Add focus city or focus country bounding box corners
+    if (activeVoyage.focusCityBbox) {
+      const [south, west, north, east] = activeVoyage.focusCityBbox
+      coords.push([south, west])
+      coords.push([north, east])
+    } else if (activeVoyage.focusCountry && activeVoyage.focusCountry.bbox) {
       const [south, west, north, east] = activeVoyage.focusCountry.bbox
       coords.push([south, west])
       coords.push([north, east])
@@ -495,6 +499,7 @@ export default function MapExplorer() {
         setLanguageMode={handleLanguageChange}
         userLocation={userLocation}
         onToast={setToast}
+        onRefreshDetails={handleSiteClick}
       />
 
       {/* Floating toast notification */}

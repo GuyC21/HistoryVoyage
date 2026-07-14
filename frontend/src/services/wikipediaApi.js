@@ -46,18 +46,19 @@ export const wikipediaApi = {
    * @param {AbortController} [abortController] - Optional cancel token reference.
    * @returns {Promise<Object|null>} Match result metadata: { extract, thumbnail, title }, or null.
    */
-  searchWikiContent: async (query, lang, siteName, country, abortController) => {
+  searchWikiContent: async (query, lang, siteName, country, abortController = null, siteCoordinates = null, siteType = 'other') => {
     if (!query) return null
     try {
       const res = await fetch(
-        `https://${lang}.wikipedia.org/w/api.php?action=query&format=json&formatversion=2&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=3&prop=extracts|pageimages&exintro=true&explaintext=true&piprop=thumbnail&pithumbsize=600&origin=*`,
+        `https://${lang}.wikipedia.org/w/api.php?action=query&format=json&formatversion=2&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=3&prop=extracts|pageimages|coordinates&exintro=true&explaintext=true&piprop=thumbnail&pithumbsize=600&origin=*`,
         { signal: abortController?.signal }
       )
       const json = await res.json()
       const pages = json.query?.pages || []
       
       for (const page of pages) {
-        if (isValidSearchResult(siteName, page.title, country)) {
+        const pageCoords = page.coordinates?.[0] || null
+        if (isValidSearchResult(siteName, page.title, country, siteCoordinates, pageCoords, siteType)) {
           return {
             extract: page.extract ? page.extract.split('\n')[0].trim() : null,
             thumbnail: page.thumbnail?.source || null,

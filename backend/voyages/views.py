@@ -38,7 +38,20 @@ class VoyageViewSet(viewsets.ModelViewSet):
         """
         title = serializer.validated_data.get('title')
         focus_country = serializer.validated_data.get('focus_country')
-        instance = create_voyage(user=self.request.user, title=title, focus_country=focus_country)
+        focus_city = serializer.validated_data.get('focus_city')
+        focus_city_latitude = serializer.validated_data.get('focus_city_latitude')
+        focus_city_longitude = serializer.validated_data.get('focus_city_longitude')
+        focus_city_bbox = serializer.validated_data.get('focus_city_bbox')
+
+        instance = create_voyage(
+            user=self.request.user,
+            title=title,
+            focus_country=focus_country,
+            focus_city=focus_city,
+            focus_city_latitude=focus_city_latitude,
+            focus_city_longitude=focus_city_longitude,
+            focus_city_bbox=focus_city_bbox
+        )
         serializer.instance = instance
 
     @extend_schema(

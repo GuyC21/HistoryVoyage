@@ -8,6 +8,9 @@
   --bg: #0f172a;
   --bg-translucent: rgba(15, 23, 42, 0.85);
   --border: #1e293b;
+  --input-bg: rgba(15, 23, 42, 0.85);
+  --input-border: #1e293b;
+  --modal-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
   --overlay-top: rgba(15, 23, 42, 0.4);
   --overlay-bottom: rgba(15, 23, 42, 0.95);
   --hero-text-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
@@ -49,6 +52,9 @@
   --bg: #ffffff;
   --bg-translucent: rgba(255, 255, 255, 0.4); /* Much glassier */
   --border: rgba(255, 255, 255, 0.5); /* Crisp white border */
+  --input-bg: #f8fafc;
+  --input-border: #cbd5e1;
+  --modal-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
   --overlay-top: rgba(255, 255, 255, 0.1);
   --overlay-bottom: rgba(255, 255, 255, 0.25);
   --hero-text-shadow: none;
@@ -191,8 +197,9 @@ html, body, #root {
 .loading-indicator {
   position: absolute;
   top: 20px;
-  right: 20px;
-  z-index: 10;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1001; /* elevated above map controls and badges */
   background: var(--bg-translucent);
   backdrop-filter: blur(8px);
   border: 1px solid var(--border);
@@ -205,6 +212,7 @@ html, body, #root {
   align-items: center;
   gap: 8px;
   box-shadow: var(--shadow-sm);
+  transition: all 0.3s ease;
 }
 
 .spinner {
@@ -367,5 +375,6 @@ html, body, #root {
     bottom: 20px;
     left: 20px;
     right: auto;
+    transform: none; /* reset horizontal alignment transform on mobile */
   }
 }

@@ -14,7 +14,7 @@ from .models import Voyage, VoyageStop
 
 User = get_user_model()
 
-def create_voyage(*, user: User, title: str, focus_country: Country = None) -> Voyage:
+def create_voyage(*, user: User, title: str, focus_country: Country = None, focus_city: str = None, focus_city_latitude: float = None, focus_city_longitude: float = None, focus_city_bbox: list = None) -> Voyage:
     """
     Creates a new Voyage instance for the specified user.
 
@@ -22,11 +22,23 @@ def create_voyage(*, user: User, title: str, focus_country: Country = None) -> V
         user (User): The user creating the voyage.
         title (str): The user-defined title of the voyage.
         focus_country (Country, optional): The country this voyage focuses on.
+        focus_city (str, optional): The specific city this voyage focuses on.
+        focus_city_latitude (float, optional): Latitude coordinates of the city.
+        focus_city_longitude (float, optional): Longitude coordinates of the city.
+        focus_city_bbox (list, optional): Bounding box coordinates of the city.
 
     Returns:
         Voyage: The created Voyage database instance.
     """
-    return Voyage.objects.create(user=user, title=title, focus_country=focus_country)
+    return Voyage.objects.create(
+        user=user,
+        title=title,
+        focus_country=focus_country,
+        focus_city=focus_city,
+        focus_city_latitude=focus_city_latitude,
+        focus_city_longitude=focus_city_longitude,
+        focus_city_bbox=focus_city_bbox
+    )
 
 
 def add_site_to_voyage(*, user: User, voyage: Voyage, site: HistoricalSite) -> VoyageStop:

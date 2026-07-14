@@ -63,9 +63,9 @@ export function VoyageProvider({ children }) {
     }
   }, [voyages, activeVoyage])
 
-  const createVoyage = async (title, focusCountryId) => {
+  const createVoyage = async (title, focusCountryId, focusCity = null, focusCityLatitude = null, focusCityLongitude = null, focusCityBbox = null) => {
     try {
-      const newVoyage = await backendApi.createVoyage(title, focusCountryId)
+      const newVoyage = await backendApi.createVoyage(title, focusCountryId, focusCity, focusCityLatitude, focusCityLongitude, focusCityBbox)
       setVoyages(prev => [...prev, newVoyage])
       return newVoyage
     } catch (err) {

@@ -1,6 +1,9 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '~/context/AuthContext'
+import { useTheme } from '~/hooks/useTheme'
+import heroBgDark from '~/assets/hero_bg.png'
+import heroBgLight from '~/assets/hero_bg_light.png'
 import styles from './Login.module.css'
 
 /**
@@ -18,7 +21,10 @@ export default function Login() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const { signIn } = useAuth()
+  const { isDarkMode } = useTheme()
   const navigate = useNavigate()
+
+  const heroBg = isDarkMode ? heroBgDark : heroBgLight
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -43,6 +49,8 @@ export default function Login() {
 
   return (
     <div className={styles.authContainer}>
+      <img src={heroBg} alt="Ancient ruins background" className={styles.authBg} />
+      <div className={styles.authBgOverlay}></div>
       <div className={styles.ambientLight1}></div>
       <div className={styles.ambientLight2}></div>
       

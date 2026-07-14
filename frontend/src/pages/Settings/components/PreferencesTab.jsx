@@ -5,12 +5,12 @@ import styles from '../Settings.module.css';
 
 export default function PreferencesTab() {
   const { user } = useAuth();
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState('light');
   const [distanceUnit, setDistanceUnit] = useState('km');
 
   useEffect(() => {
     // Read current theme from localStorage if available
-    const savedTheme = localStorage.getItem('app-theme') || 'dark';
+    const savedTheme = localStorage.getItem('app-theme') || 'light';
     setTheme(savedTheme);
 
     // Read distance unit from user metadata or localStorage

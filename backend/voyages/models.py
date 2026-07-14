@@ -30,6 +30,27 @@ class Voyage(models.Model):
         related_name='voyages',
         help_text="The country this voyage focuses on."
     )
+    focus_city = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="The specific city this voyage focuses on."
+    )
+    focus_city_latitude = models.FloatField(
+        blank=True,
+        null=True,
+        help_text="Latitude coordinates of the focused city."
+    )
+    focus_city_longitude = models.FloatField(
+        blank=True,
+        null=True,
+        help_text="Longitude coordinates of the focused city."
+    )
+    focus_city_bbox = models.JSONField(
+        blank=True,
+        null=True,
+        help_text="Bounding box of the focused city: [south, west, north, east]"
+    )
     created_at = models.DateTimeField(
         auto_now_add=True,
         help_text="Timestamp when the voyage was created."
