@@ -66,6 +66,7 @@ AUTH_USER_MODEL = 'accounts.User'
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # CorsMiddleware must be placed before CommonMiddleware
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -154,24 +155,28 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS configurations
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5174",
-    "http://localhost:5175",
-    "http://127.0.0.1:5175",
-    "http://localhost:5176",
-    "http://127.0.0.1:5176",
-    "http://localhost:5177",
-    "http://127.0.0.1:5177",
-    "http://localhost:5178",
-    "http://127.0.0.1:5178",
-    "http://localhost:5179",
-    "http://127.0.0.1:5179",
-    "http://localhost:5180",
-    "http://127.0.0.1:5180",
-]
+ALLOWED_CORS_ORIGINS_ENV = os.environ.get('ALLOWED_CORS_ORIGINS')
+if ALLOWED_CORS_ORIGINS_ENV:
+    CORS_ALLOWED_ORIGINS = ALLOWED_CORS_ORIGINS_ENV.split(',')
+else:
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+        "http://localhost:5175",
+        "http://127.0.0.1:5175",
+        "http://localhost:5176",
+        "http://127.0.0.1:5176",
+        "http://localhost:5177",
+        "http://127.0.0.1:5177",
+        "http://localhost:5178",
+        "http://127.0.0.1:5178",
+        "http://localhost:5179",
+        "http://127.0.0.1:5179",
+        "http://localhost:5180",
+        "http://127.0.0.1:5180",
+    ]
 CORS_ALLOW_CREDENTIALS = True
 
 # Django REST Framework configuration
