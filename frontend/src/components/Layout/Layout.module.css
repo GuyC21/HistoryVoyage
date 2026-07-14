@@ -12,12 +12,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 32px;
-  background: var(--bg-translucent);
+  background: var(--nav-home-bg);
   backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--nav-home-border);
   z-index: 100;
-  position: sticky;
+  position: absolute;
   top: 0;
+  left: 0;
+  right: 0;
 }
 
 .navBrand {
@@ -75,27 +77,51 @@
   width: 100%;
 }
 
-.globalNavbar.navbarHome {
+.layoutBg {
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
-  background: rgba(15, 23, 42, 0.3);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+}
+
+.layoutOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, var(--overlay-top) 0%, var(--overlay-bottom) 100%);
+  z-index: 2;
+}
+
+.pageWrapper {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.globalNavbar.navbarHome {
+  /* Inherits absolute positioning and base styles from globalNavbar */
 }
 
 .globalNavbar.navbarHome .navBrand {
-  color: #ffffff;
+  color: var(--nav-home-text);
 }
 
 .globalNavbar.navbarHome .btnNav:not(.btnPrimary) {
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--nav-home-text);
+  opacity: 0.9;
 }
 
 .globalNavbar.navbarHome .btnNav:not(.btnPrimary):hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  background: var(--nav-home-text-hover-bg);
+  color: var(--nav-home-text);
+  opacity: 1;
 }
 
 /* Mobile responsive styles */
@@ -143,13 +169,13 @@
 
 /* Home page navbar overrides for user elements */
 .globalNavbar.navbarHome .userBadge {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.25);
+  color: var(--nav-home-text);
+  background: var(--nav-home-bg);
+  border-color: var(--nav-home-border);
 }
 
 .globalNavbar.navbarHome .userBadge:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--nav-home-text-hover-bg);
 }
 
 /* User Dropdown Styles */
@@ -183,11 +209,12 @@
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  background: var(--bg-translucent);
+  background: var(--dropdown-bg);
   backdrop-filter: blur(20px);
-  border: 1px solid var(--border);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--dropdown-border);
   border-radius: 12px;
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--dropdown-shadow);
   padding: 8px;
   min-width: 200px;
   display: flex;
@@ -210,9 +237,7 @@
 
 /* Home page navbar overrides for the dropdown menu */
 .globalNavbar.navbarHome .dropdownMenu {
-  background: rgba(15, 23, 42, 0.95);
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  /* Inherits standard dropdown styling */
 }
 
 .dropdownItem {
@@ -241,12 +266,14 @@
 }
 
 .globalNavbar.navbarHome .dropdownItem {
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--nav-home-text);
+  opacity: 0.9;
 }
 
 .globalNavbar.navbarHome .dropdownItem:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  background: var(--nav-home-text-hover-bg);
+  color: var(--nav-home-text);
+  opacity: 1;
 }
 
 .dropdownItem.disabled {
@@ -262,7 +289,7 @@
 }
 
 .globalNavbar.navbarHome .dropdownDivider {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--nav-home-border);
 }
 
 .btnDropdownSignout {
@@ -281,6 +308,13 @@
 .globalNavbar.navbarHome .btnDropdownSignout:hover:not(:disabled) {
   background: rgba(248, 113, 113, 0.15) !important;
   color: #f87171 !important;
+}
+
+.floatingUserDropdownWrapper {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
 }
 
 

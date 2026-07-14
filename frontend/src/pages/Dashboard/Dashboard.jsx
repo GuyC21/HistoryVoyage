@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '~/context/AuthContext'
 import { useVoyage } from '~/context/VoyageContext'
 import { backendApi } from '~/services/api'
-import heroBg from '~/assets/hero_bg.png'
+import { searchCities } from '~/services/nominatim'
 import styles from './Dashboard.module.css'
 
 export default function Dashboard() {
@@ -16,6 +16,13 @@ export default function Dashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [countries, setCountries] = useState([])
   const [selectedCountryId, setSelectedCountryId] = useState('')
+
+  // State for city focus selection
+  const [focusCityQuery, setFocusCityQuery] = useState('')
+  const [citySuggestions, setCitySuggestions] = useState([])
+  const [selectedCity, setSelectedCity] = useState(null)
+  const [searchingCity, setSearchingCity] = useState(false)
+  const [showCityDropdown, setShowCityDropdown] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -38,14 +45,89 @@ export default function Dashboard() {
     }
   }, [])
 
+  // Clear city when country changes
+  useEffect(() => {
+    setFocusCityQuery('')
+    setSelectedCity(null)
+    setCitySuggestions([])
+    setShowCityDropdown(false)
+  }, [selectedCountryId])
+
+  // Debounced search for focus cities restricted to the selected country
+  useEffect(() => {
+    if (!focusCityQuery.trim()) {
+      setCitySuggestions([])
+      setShowCityDropdown(false)
+      return
+    }
+
+    // Skip query if query is exactly the selected city's name
+    if (selectedCity && selectedCity.name === focusCityQuery) {
+      return
+    }
+
+    const selectedCountry = countries.find(c => c.id === parseInt(selectedCountryId))
+    const countryCode = selectedCountry?.code || null
+
+    const controller = new AbortController()
+    setSearchingCity(true)
+
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchCities(focusCityQuery, controller.signal, countryCode)
+        setCitySuggestions(results)
+        setShowCityDropdown(true)
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error('Failed to search cities:', err)
+        }
+      } finally {
+        setSearchingCity(false)
+      }
+    }, 1000)
+
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
+  }, [focusCityQuery, selectedCountryId, countries, selectedCity])
+
   if (authLoading || voyageLoading) {
     return (
       <div className={styles.dashboardContainer} style={{ justifyContent: 'center', alignItems: 'center' }}>
-        <img src={heroBg} alt="Ancient ruins under starry night" className={styles.heroBg} />
-        <div className={styles.heroOverlay}></div>
         <div className="spinner" style={{ zIndex: 10 }}></div>
       </div>
     )
+  }
+
+  const handleSelectCity = (cityFeature) => {
+    setSelectedCity({
+      name: cityFeature.properties.name,
+      lat: cityFeature.geometry.coordinates[1],
+      lng: cityFeature.geometry.coordinates[0],
+      bbox: cityFeature.properties.bbox
+    })
+    setFocusCityQuery(cityFeature.properties.name)
+    setCitySuggestions([])
+    setShowCityDropdown(false)
+  }
+
+  const handleCityInputChange = (val) => {
+    setFocusCityQuery(val)
+    setCitySuggestions([])
+    setShowCityDropdown(false)
+    if (!val.trim()) {
+      setSelectedCity(null)
+    }
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setNewTitle('')
+    setFocusCityQuery('')
+    setSelectedCity(null)
+    setCitySuggestions([])
+    setShowCityDropdown(false)
   }
 
   const handleCreate = async (e) => {
@@ -53,15 +135,21 @@ export default function Dashboard() {
     if (!newTitle.trim() || !selectedCountryId) return
     setIsSubmitting(true)
     try {
-      const voyage = await createVoyage(newTitle, selectedCountryId)
+      const voyage = await createVoyage(
+        newTitle,
+        selectedCountryId,
+        selectedCity ? selectedCity.name : null,
+        selectedCity ? selectedCity.lat : null,
+        selectedCity ? selectedCity.lng : null,
+        selectedCity ? selectedCity.bbox : null
+      )
       setActiveVoyage(voyage)
       navigate('/explore')
     } catch (err) {
       console.error(err)
     } finally {
       setIsSubmitting(false)
-      setIsModalOpen(false)
-      setNewTitle('')
+      handleCloseModal()
     }
   }
 
@@ -83,9 +171,6 @@ export default function Dashboard() {
 
   return (
     <div className={styles.dashboardContainer}>
-      <img src={heroBg} alt="Ancient ruins under starry night" className={styles.heroBg} />
-      <div className={styles.heroOverlay}></div>
-
       <div className={styles.scrollBody}>
         <div className={styles.dashboardContent}>
           <header className={styles.header}>
@@ -137,7 +222,7 @@ export default function Dashboard() {
 
       {/* Create Modal */}
       {isModalOpen && (
-        <div className={styles.modalOverlay} onClick={() => !isSubmitting && setIsModalOpen(false)}>
+        <div className={styles.modalOverlay} onClick={() => !isSubmitting && handleCloseModal()}>
           <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
             <h2>Name your Voyage</h2>
             <form onSubmit={handleCreate}>
@@ -169,11 +254,44 @@ export default function Dashboard() {
                   ))}
                 </select>
               </div>
+
+              {selectedCountryId && (
+                <div className={styles.inputGroup} style={{ position: 'relative' }}>
+                  <label htmlFor="voyageCity">Focus City (Optional)</label>
+                  <input
+                    id="voyageCity"
+                    type="text"
+                    placeholder="e.g. Athens or Lakka"
+                    value={focusCityQuery}
+                    onChange={e => handleCityInputChange(e.target.value)}
+                    autoComplete="off"
+                  />
+                  {searchingCity && (
+                    <div style={{ position: 'absolute', right: '10px', top: '38px', fontSize: '12px', opacity: 0.6 }}>
+                      ⏳
+                    </div>
+                  )}
+                  {showCityDropdown && citySuggestions.length > 0 && (
+                    <ul className={styles.suggestionsDropdown}>
+                      {citySuggestions.map(city => (
+                        <li 
+                          key={city.id} 
+                          onClick={() => handleSelectCity(city)}
+                          className={styles.suggestionItem}
+                        >
+                          🏙️ {city.properties.display_name}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
               <div className={styles.modalActions}>
                 <button 
                   type="button" 
                   className={styles.btnCancel} 
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={handleCloseModal}
                   disabled={isSubmitting}
                 >
                   Cancel

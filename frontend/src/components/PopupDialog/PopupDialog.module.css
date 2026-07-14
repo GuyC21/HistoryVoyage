@@ -4,7 +4,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(3, 7, 18, 0.6);
+  background-color: var(--overlay-top);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;
@@ -16,8 +16,8 @@
 }
 
 .dialogCard {
-  background: rgba(17, 24, 39, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: 20px;
   width: 100%;
   max-width: 440px;
@@ -31,11 +31,11 @@
 
 @keyframes fadeIn {
   from {
-    background-color: rgba(3, 7, 18, 0);
+    background-color: transparent;
     backdrop-filter: blur(0px);
   }
   to {
-    background-color: rgba(3, 7, 18, 0.6);
+    background-color: var(--overlay-top);
     backdrop-filter: blur(8px);
   }
 }
@@ -52,7 +52,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--border);
   padding-bottom: 12px;
 }
 
@@ -61,13 +61,13 @@
   font-family: var(--sans);
   font-size: 18px;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--text-h);
 }
 
 .btnClose {
   background: none;
   border: none;
-  color: #9ca3af;
+  color: var(--text);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -78,13 +78,13 @@
 }
 
 .btnClose:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #ffffff;
+  background: var(--bg-translucent);
+  color: var(--text-h);
 }
 
 .body {
   font-family: var(--sans);
   font-size: 14px;
-  color: #d1d5db;
+  color: var(--text);
   line-height: 1.6;
 }

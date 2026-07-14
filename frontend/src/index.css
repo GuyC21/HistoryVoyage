@@ -2,16 +2,35 @@
 @import "leaflet/dist/leaflet.css";
 
 :root {
-  --text: #6b7280;
-  --text-h: #111827;
-  --bg: #ffffff;
-  --bg-translucent: rgba(255, 255, 255, 0.8);
-  --border: #e5e7eb;
-  --accent: #aa3bff;
-  --accent-hover: #8e2bde;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.3);
-  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  /* Dark mode variables (DEFAULT) */
+  --text: #9ca3af;
+  --text-h: #f3f4f6;
+  --bg: #0f172a;
+  --bg-translucent: rgba(15, 23, 42, 0.85);
+  --border: #1e293b;
+  --input-bg: rgba(15, 23, 42, 0.85);
+  --input-border: #1e293b;
+  --modal-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+  --overlay-top: rgba(15, 23, 42, 0.4);
+  --overlay-bottom: rgba(15, 23, 42, 0.95);
+  --hero-text-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  
+  /* Navbar Home Variables */
+  --nav-home-bg: rgba(15, 23, 42, 0.3);
+  --nav-home-border: rgba(255, 255, 255, 0.1);
+  --nav-home-text: #ffffff;
+  --nav-home-text-hover-bg: rgba(255, 255, 255, 0.1);
+  
+  /* Dropdown Variables */
+  --dropdown-bg: rgba(15, 23, 42, 0.95);
+  --dropdown-border: rgba(255, 255, 255, 0.15);
+  --dropdown-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  
+  --accent: #c084fc;
+  --accent-hover: #a855f7;
+  --accent-bg: rgba(192, 132, 252, 0.15);
+  --accent-border: rgba(192, 132, 252, 0.4);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
   --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
   
   /* Category Colors */
@@ -26,19 +45,36 @@
   --mono: ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #0f172a;
-    --bg-translucent: rgba(15, 23, 42, 0.85);
-    --border: #1e293b;
-    --accent: #c084fc;
-    --accent-hover: #a855f7;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.4);
-    --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
-  }
+:root[data-theme='light'] {
+  /* Light mode variables */
+  --text: #6b7280;
+  --text-h: #111827;
+  --bg: #ffffff;
+  --bg-translucent: rgba(255, 255, 255, 0.4); /* Much glassier */
+  --border: rgba(255, 255, 255, 0.5); /* Crisp white border */
+  --input-bg: #f8fafc;
+  --input-border: #cbd5e1;
+  --modal-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+  --overlay-top: rgba(255, 255, 255, 0.1);
+  --overlay-bottom: rgba(255, 255, 255, 0.25);
+  --hero-text-shadow: none;
+  
+  /* Navbar Home Variables */
+  --nav-home-bg: rgba(255, 255, 255, 0.15);
+  --nav-home-border: rgba(255, 255, 255, 0.4);
+  --nav-home-text: #111827;
+  --nav-home-text-hover-bg: rgba(255, 255, 255, 0.4);
+  
+  /* Dropdown Variables */
+  --dropdown-bg: rgba(255, 255, 255, 0.85);
+  --dropdown-border: rgba(255, 255, 255, 0.4);
+  --dropdown-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  
+  --accent: #aa3bff;
+  --accent-hover: #8e2bde;
+  --accent-bg: rgba(170, 59, 255, 0.1);
+  --accent-border: rgba(170, 59, 255, 0.3);
+  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
 }
 
 html, body, #root {
@@ -104,6 +140,11 @@ html, body, #root {
   border: none !important;
 }
 
+/* Dark Mode Map Filter */
+.dark-map-filter {
+  filter: invert(95%) hue-rotate(200deg) brightness(100%) contrast(90%) saturate(120%);
+}
+
 /* Custom Marker Pins */
 .custom-pin-wrapper {
   display: flex;
@@ -156,8 +197,9 @@ html, body, #root {
 .loading-indicator {
   position: absolute;
   top: 20px;
-  right: 20px;
-  z-index: 10;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1001; /* elevated above map controls and badges */
   background: var(--bg-translucent);
   backdrop-filter: blur(8px);
   border: 1px solid var(--border);
@@ -170,6 +212,7 @@ html, body, #root {
   align-items: center;
   gap: 8px;
   box-shadow: var(--shadow-sm);
+  transition: all 0.3s ease;
 }
 
 .spinner {
@@ -332,5 +375,6 @@ html, body, #root {
     bottom: 20px;
     left: 20px;
     right: auto;
+    transform: none; /* reset horizontal alignment transform on mobile */
   }
 }

@@ -81,10 +81,18 @@ class VoyageSerializer(serializers.ModelSerializer):
         allow_null=True,
         help_text="The ID of the focus country."
     )
+    focusCity = serializers.CharField(source='focus_city', required=False, allow_null=True, allow_blank=True)
+    focusCityLatitude = serializers.FloatField(source='focus_city_latitude', required=False, allow_null=True)
+    focusCityLongitude = serializers.FloatField(source='focus_city_longitude', required=False, allow_null=True)
+    focusCityBbox = serializers.JSONField(source='focus_city_bbox', required=False, allow_null=True)
 
     class Meta:
         model = Voyage
-        fields = ('id', 'title', 'createdAt', 'updatedAt', 'stops', 'focusCountry', 'focusCountryId')
+        fields = (
+            'id', 'title', 'createdAt', 'updatedAt', 'stops',
+            'focusCountry', 'focusCountryId',
+            'focusCity', 'focusCityLatitude', 'focusCityLongitude', 'focusCityBbox'
+        )
 
 
 class AddSiteRequestSerializer(serializers.Serializer):

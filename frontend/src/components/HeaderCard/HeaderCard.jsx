@@ -226,8 +226,8 @@ export default function HeaderCard({
               min="1"
               style={{
                 width: '80px',
-                background: 'var(--bg-translucent)',
-                border: '1px solid var(--border)',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--input-border)',
                 borderRadius: '4px',
                 padding: '2px 6px',
                 color: 'var(--text-h)',

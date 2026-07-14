@@ -193,20 +193,34 @@ export default function MapView({
    * Tracks whether light or dark tiles should render based on the OS style.
    */
   const [isDarkMode, setIsDarkMode] = useState(
-    window.matchMedia('(prefers-color-scheme: dark)').matches
+    document.documentElement.getAttribute('data-theme') !== 'light'
   )
 
-  // Listen to OS theme changes
+  // Listen to data-theme attribute changes on document.documentElement
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    const handleChange = (e) => setIsDarkMode(e.matches)
-    mediaQuery.addEventListener('change', handleChange)
-    return () => mediaQuery.removeEventListener('change', handleChange)
+    const handleThemeChange = () => {
+      setIsDarkMode(document.documentElement.getAttribute('data-theme') !== 'light');
+    };
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+          handleThemeChange();
+        }
+      });
+    });
+
+    observer.observe(document.documentElement, { attributes: true });
+    
+    // Initial sync just in case
+    handleThemeChange();
+
+    return () => observer.disconnect();
   }, [])
 
-  // CartoDB Tile Providers (rendered as vector-styled raster map tiles)
-  const darkTiles = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-  const lightTiles = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+  const lightTiles = isDarkMode 
+    ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
   
   /** @type {string} Attribution label required for OpenStreetMap and CartoDB usage guidelines. */
   const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
@@ -214,10 +228,11 @@ export default function MapView({
   return (
     <>
       <TileLayer
-        url={isDarkMode ? darkTiles : lightTiles}
+        url={lightTiles}
         attribution={attribution}
         maxNativeZoom={19}
         maxZoom={22}
+        className={isDarkMode ? 'dark-map-filter' : ''}
       />
 
       {activePolygon && (

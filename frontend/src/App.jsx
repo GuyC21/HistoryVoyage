@@ -8,6 +8,7 @@ import MapExplorer from '~/pages/MapExplorer'
 import Dashboard from '~/pages/Dashboard/Dashboard'
 import Login from '~/pages/Auth/Login'
 import Signup from '~/pages/Auth/Signup'
+import Settings from '~/pages/Settings/Settings'
 import ProtectedRoute from '~/components/ProtectedRoute'
 
 /**
@@ -29,6 +30,7 @@ function App() {
               <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/explore" element={<MapExplorer />} />
+                <Route path="/settings" element={<Settings />} />
               </Route>
             </Route>
 

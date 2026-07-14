@@ -186,7 +186,7 @@ export const useSiteDetails = (mapInstance, setActivePolygon) => {
         const siteNameForValidation = siteDetails.englishName || siteDetails.name
         
         if (!wikidataImageUrl || !backendEnglishDescription) {
-          const enSearch = await wikipediaApi.searchWikiContent(searchQuery, 'en', siteNameForValidation, siteDetails.country, controller)
+          const enSearch = await wikipediaApi.searchWikiContent(searchQuery, 'en', siteNameForValidation, siteDetails.country, controller, siteDetails.coordinates, siteDetails.site_type || 'other')
           if (enSearch) {
              if (!wikidataImageUrl && enSearch.thumbnail) wikidataImageUrl = enSearch.thumbnail
              if (!backendEnglishDescription && enSearch.extract) backendEnglishDescription = enSearch.extract
@@ -195,7 +195,7 @@ export const useSiteDetails = (mapInstance, setActivePolygon) => {
         }
         
         if (!backendLocalDescription) {
-           const localSearch = await wikipediaApi.searchWikiContent(searchQuery, langCode, siteNameForValidation, siteDetails.country, controller)
+           const localSearch = await wikipediaApi.searchWikiContent(searchQuery, langCode, siteNameForValidation, siteDetails.country, controller, siteDetails.coordinates, siteDetails.site_type || 'other')
            if (localSearch) {
              if (!wikidataImageUrl && localSearch.thumbnail) wikidataImageUrl = localSearch.thumbnail
              if (localSearch.extract) backendLocalDescription = localSearch.extract

@@ -7,7 +7,8 @@
   width: 380px;
   z-index: 10;
   background: var(--bg-translucent);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-lg);
   border-radius: 20px;
@@ -42,10 +43,10 @@
   position: absolute;
   top: 16px;
   right: 16px;
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: var(--overlay-top);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  color: var(--text-h);
   font-size: 20px;
   cursor: pointer;
   display: flex;
@@ -59,8 +60,8 @@
 }
 
 .drawerCloseBtn:hover {
-  background: rgba(15, 23, 42, 0.70);
-  color: #fff;
+  background: var(--bg-translucent);
+  color: var(--text-h);
   transform: scale(1.05);
 }
 

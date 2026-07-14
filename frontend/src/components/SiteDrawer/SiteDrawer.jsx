@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { getRoadDistance, formatDistance } from '~/utils/distance'
 import { useVoyage } from '~/context/VoyageContext'
+import { useAuth } from '~/context/AuthContext'
+import { supabase } from '~/services/supabase'
+import { backendApi } from '~/services/api'
 import styles from './SiteDrawer.module.css'
 
 /**
@@ -26,10 +29,95 @@ export default function SiteDrawer({
   languageMode, 
   setLanguageMode,
   userLocation,
-  onToast
+  onToast,
+  onRefreshDetails
 }) {
+  const { user, djangoUser } = useAuth()
+
+  // State for Wikidata inline editor
+  const [isEditingWikidata, setIsEditingWikidata] = useState(false)
+  const [editWikidataVal, setEditWikidataVal] = useState('')
+  const [updatingWikidata, setUpdatingWikidata] = useState(false)
+
+  // Sync edit input value when selected site changes
+  useEffect(() => {
+    if (site) {
+      setEditWikidataVal(site.wikidata || '')
+    }
+    setIsEditingWikidata(false)
+  }, [site])
+
+  const handleSaveWikidata = async () => {
+    if (!site) return
+
+    let cleanVal = editWikidataVal.trim()
+    if (cleanVal) {
+      if (!cleanVal.toUpperCase().startsWith('Q') || !/^\d+$/.test(cleanVal.slice(1))) {
+        if (onToast) {
+          onToast('Invalid Wikidata ID. Must start with Q followed by numbers.', 'error')
+        } else {
+          alert('Invalid Wikidata ID. Must start with Q followed by numbers.')
+        }
+        return
+      }
+      cleanVal = cleanVal.toUpperCase()
+    } else {
+      cleanVal = null
+    }
+
+    setUpdatingWikidata(true)
+    try {
+      await backendApi.updateSiteWikidata(site.id, cleanVal)
+      if (onToast) {
+        onToast('Wikidata ID updated successfully!', 'success')
+      }
+      setIsEditingWikidata(false)
+
+      if (onRefreshDetails) {
+        onRefreshDetails({
+          ...site,
+          wikidata: cleanVal,
+          englishName: null,
+          englishDescription: null
+        })
+      }
+    } catch (err) {
+      console.error(err)
+      if (onToast) {
+        onToast(err.message || 'Failed to update Wikidata ID', 'error')
+      }
+    } finally {
+      setUpdatingWikidata(false)
+    }
+  }
+
   /** @type {string} Unit selection: 'km' (kilometers) or 'mi' (miles). */
-  const [distanceUnit, setDistanceUnit] = useState('km')
+  const [distanceUnit, setDistanceUnit] = useState(() => {
+    return localStorage.getItem('app-distance-unit') || 'km'
+  })
+
+  // Sync distanceUnit state when user metadata is loaded
+  useEffect(() => {
+    if (user?.user_metadata?.distance_unit) {
+      setDistanceUnit(user.user_metadata.distance_unit)
+    }
+  }, [user])
+
+  const handleDistanceUnitChange = async (newUnit) => {
+    setDistanceUnit(newUnit)
+    localStorage.setItem('app-distance-unit', newUnit)
+    if (user) {
+      try {
+        await supabase.auth.updateUser({
+          data: {
+            distance_unit: newUnit
+          }
+        })
+      } catch (err) {
+        console.error('Failed to sync distance unit to Supabase:', err)
+      }
+    }
+  }
 
   /**
    * @type {Object|null} Resolved driving/air distance details.
@@ -191,7 +279,87 @@ export default function SiteDrawer({
             <div className={styles.drawerLanguageRow}>
               <div className={styles.drawerMeta}>
                 <span>📍 {site.country}</span>
-                {site.wikidata && <span>🆔 {site.wikidata}</span>}
+                {isEditingWikidata ? (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', margin: '4px 0' }}>
+                    <span style={{ fontSize: '12px' }}>🆔</span>
+                    <input 
+                      type="text" 
+                      value={editWikidataVal}
+                      onChange={(e) => setEditWikidataVal(e.target.value)}
+                      placeholder="e.g. Q186326"
+                      disabled={updatingWikidata}
+                      style={{
+                        padding: '2px 6px',
+                        fontSize: '12px',
+                        borderRadius: '4px',
+                        border: '1px solid var(--input-border)',
+                        background: 'var(--input-bg)',
+                        color: 'var(--text-h)',
+                        width: '90px'
+                      }}
+                    />
+                    <button 
+                      onClick={handleSaveWikidata}
+                      disabled={updatingWikidata}
+                      style={{
+                        padding: '2px 6px',
+                        fontSize: '11px',
+                        borderRadius: '4px',
+                        background: 'var(--color-castle)',
+                        color: 'white',
+                        border: 'none',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {updatingWikidata ? '...' : 'Save'}
+                    </button>
+                    <button 
+                      onClick={() => setIsEditingWikidata(false)}
+                      disabled={updatingWikidata}
+                      style={{
+                        padding: '2px 6px',
+                        fontSize: '11px',
+                        borderRadius: '4px',
+                        background: 'var(--border)',
+                        color: 'var(--text-h)',
+                        border: 'none',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      X
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    {site.wikidata ? (
+                      <span>🆔 {site.wikidata}</span>
+                    ) : (
+                      <span style={{ opacity: 0.6, fontSize: '0.85em' }}>No Wikidata ID</span>
+                    )}
+                    {djangoUser?.is_staff && (
+                      <button
+                        onClick={() => {
+                          setEditWikidataVal(site.wikidata || '')
+                          setIsEditingWikidata(true)
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '2px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          opacity: 0.7,
+                          color: 'var(--text-h)',
+                          fontSize: '12px'
+                        }}
+                        title="Edit Wikidata ID"
+                      >
+                        ✏️
+                      </button>
+                    )}
+                  </div>
+                )}
                 
                 {distanceData && (
                   <div className={styles.drawerDistanceWrapper} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', padding: '6px 8px', backgroundColor: 'var(--bg)', borderRadius: '6px', border: '1px solid var(--border)' }}>
@@ -200,7 +368,7 @@ export default function SiteDrawer({
                       {distanceData.isAir && <span style={{ opacity: 0.6, fontSize: '0.85em', marginLeft: '4px', fontWeight: 'normal' }}>(air distance)</span>}
                     </span>
                     <button 
-                      onClick={() => setDistanceUnit(prev => prev === 'km' ? 'mi' : 'km')}
+                      onClick={() => handleDistanceUnitChange(distanceUnit === 'km' ? 'mi' : 'km')}
                       style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-translucent)', cursor: 'pointer', color: 'var(--text-h)', marginLeft: 'auto' }}
                       title={`Switch to ${distanceUnit === 'km' ? 'miles' : 'kilometers'}`}
                     >

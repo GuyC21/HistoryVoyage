@@ -5,7 +5,7 @@ Provides Django REST Framework ViewSets for interacting with HistoricalSite obje
 Supports retrieve translation overrides, text search, bounding box filters, and geographic queries.
 """
 
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.conf import settings
@@ -141,3 +141,31 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
                 {"error": "Invalid 'lat', 'lng', or 'radius' values. They must be numeric."},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+    @action(detail=True, methods=['patch'], url_path='update-wikidata', permission_classes=[permissions.IsAdminUser])
+    def update_wikidata(self, request, pk=None):
+        """
+        Updates the wikidata identifier of a site. Restrained to Django staff admin accounts.
+        """
+        instance = self.get_object()
+        wikidata_id = request.data.get('wikidata')
+
+        if wikidata_id:
+            wikidata_id = wikidata_id.strip()
+            if not wikidata_id.startswith('Q') or not wikidata_id[1:].isdigit():
+                return Response(
+                    {"detail": "Invalid Wikidata ID format. Must start with 'Q' followed by digits (e.g. Q186326)."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            wikidata_id = None
+
+        if instance.wikidata != wikidata_id:
+            instance.wikidata = wikidata_id
+            # Reset English translations so they are re-resolved from the new Wikidata node
+            instance.english_name = None
+            instance.english_description = None
+            instance.save(update_fields=['wikidata', 'english_name', 'english_description'])
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data, status=status.HTTP_200_OK)
