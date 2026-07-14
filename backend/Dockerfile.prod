@@ -23,7 +23,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . /app/
 
 # Collect static files for production
-RUN python manage.py collectstatic --noinput
+RUN SECRET_KEY=dummy SUPABASE_JWT_SECRET=dummy DATABASE_URL=dummy python manage.py collectstatic --noinput
 
 # Expose Django port
 EXPOSE 8000
