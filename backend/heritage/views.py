@@ -21,6 +21,7 @@ class CountryViewSet(viewsets.ReadOnlyModelViewSet):
     """
     queryset = Country.objects.all()
     serializer_class = CountrySerializer
+    permission_classes = [permissions.AllowAny]
     pagination_class = None
 
 class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
@@ -31,6 +32,7 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
     bounds, whereas search endpoints rank matched terms.
     """
     queryset = HistoricalSite.objects.select_related('country').all()
+    permission_classes = [permissions.AllowAny]
     pagination_class = None
     
     def get_serializer_class(self):
