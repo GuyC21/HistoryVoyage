@@ -39,6 +39,20 @@ export default function SiteDrawer({
   const [editWikidataVal, setEditWikidataVal] = useState('')
   const [updatingWikidata, setUpdatingWikidata] = useState(false)
 
+  // Mobile drawer state
+  const [isExpanded, setIsExpanded] = useState(false)
+  const touchStartY = useRef(null)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
   // Sync edit input value when selected site changes
   useEffect(() => {
     if (site) {
@@ -198,6 +212,33 @@ export default function SiteDrawer({
 
   const category = site ? getCategoryMeta(site.site_type) : null
 
+  // Reset expansion state when opening a new site or when the drawer opens
+  useEffect(() => {
+    if (isOpen) {
+      setIsExpanded(false)
+    }
+  }, [isOpen, site])
+
+  const handleTouchStart = (e) => {
+    touchStartY.current = e.touches[0].clientY
+  }
+
+  const handleTouchEnd = (e) => {
+    if (touchStartY.current === null) return
+    const touchEndY = e.changedTouches[0].clientY
+    const deltaY = touchEndY - touchStartY.current
+    
+    // Swipe down to collapse
+    if (deltaY > 50 && isExpanded) {
+      setIsExpanded(false)
+    }
+    // Swipe up to expand
+    else if (deltaY < -50 && !isExpanded) {
+      setIsExpanded(true)
+    }
+    touchStartY.current = null
+  }
+
   // Determine title and description to show based on languageMode
   let displayName = ''
   let displayDescription = ''
@@ -226,9 +267,17 @@ export default function SiteDrawer({
 
   return (
     <div 
-      className={`${styles.siteDrawer} ${isOpen ? styles.open : ''}`}
+      className={`${styles.siteDrawer} ${isOpen ? styles.open : ''} ${isExpanded ? styles.expanded : styles.collapsed} ${site?.imageUrl ? styles.hasImage : styles.noImage}`}
       style={{ '--marker-color': category?.color }}
     >
+      <div 
+        className={styles.dragHandleContainer} 
+        onTouchStart={handleTouchStart} 
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className={styles.dragHandle}></div>
+      </div>
+
       <button className={styles.drawerCloseBtn} onClick={onClose} aria-label="Close details">
         &times;
       </button>
@@ -401,15 +450,20 @@ export default function SiteDrawer({
           <div className={styles.drawerDivider}></div>
 
           <div className={styles.drawerBody}>
-            {displayDescription ? (
-              <p>{displayDescription}</p>
-            ) : (
-              <p>
-                {languageMode === 'en' 
+            {(() => {
+              const activeDescription = displayDescription || (
+                languageMode === 'en' 
                   ? 'No English description available for this historical site. You can explore more about it on Wikidata or search for its historical context in the region.'
-                  : 'אין תיאור זמין או non è disponibile alcuna descrizione per questo sito storico.'}
-              </p>
-            )}
+                  : 'אין תיאור זמין או non è disponibile alcuna descrizione per questo sito storico.'
+              )
+              const limit = site.imageUrl ? 60 : 140
+              const isDescriptionLong = activeDescription.length > limit
+
+              if (isMobile && !isExpanded && isDescriptionLong) {
+                return <p className={styles.expandMoreText}>Expand to read more</p>
+              }
+              return <p>{activeDescription}</p>
+            })()}
           </div>
 
             {(() => {
