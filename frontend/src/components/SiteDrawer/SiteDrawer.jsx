@@ -305,11 +305,10 @@ export default function SiteDrawer({
               />
             </div>
           )}
+          <span className={styles.drawerTag}>
+            {category.emoji} {category.label}
+          </span>
           <div className={styles.drawerHeader}>
-            <span className={styles.drawerTag}>
-              {category.emoji} {category.label}
-            </span>
-            
             <h2 className={styles.drawerTitle}>
               {displayName}
               {isFallback && languageMode === 'en' && (
@@ -459,13 +458,11 @@ export default function SiteDrawer({
               const limit = site.imageUrl ? 60 : 140
               const isDescriptionLong = activeDescription.length > limit
 
-              if (isMobile && !isExpanded && isDescriptionLong) {
-                return <p className={styles.expandMoreText}>Expand to read more</p>
-              }
               return <p>{activeDescription}</p>
             })()}
           </div>
 
+          <div className={styles.actionButtonsRow}>
             {(() => {
               const wikiUrl = languageMode === 'en' 
                 ? (site.wikiUrlEn || site.wikiUrlLocal) 
@@ -479,7 +476,7 @@ export default function SiteDrawer({
                     rel="noopener noreferrer" 
                     className={styles.wikipediaBtn}
                   >
-                    📚 Explore on Wikipedia
+                    📚 Wikipedia
                   </a>
                 )
               }
@@ -491,7 +488,7 @@ export default function SiteDrawer({
                     rel="noopener noreferrer" 
                     className={styles.wikipediaBtn}
                   >
-                    📚 Explore on Wikidata
+                    📚 Wikipedia
                   </a>
                 )
               }
@@ -528,7 +525,7 @@ export default function SiteDrawer({
                     disabled={isRemoving}
                     className={`${styles.voyageActionBtn} ${styles.voyageRemoveBtn}`}
                   >
-                    {isRemoving ? 'Removing...' : `❌ Remove from ${activeVoyage.title}`}
+                    {isRemoving ? 'Removing...' : `❌ Remove`}
                   </button>
                 )
               }
@@ -550,10 +547,11 @@ export default function SiteDrawer({
                   disabled={isAdding}
                   className={`${styles.voyageActionBtn} ${styles.voyageAddBtn}`}
                 >
-                  {isAdding ? 'Adding...' : `➕ Add to ${activeVoyage.title}`}
+                  {isAdding ? 'Adding...' : `➕ Add`}
                 </button>
               )
             })()}
+          </div>
           </div>
         ) : (
         <p>Select a historical site to view details.</p>
