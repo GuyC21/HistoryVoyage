@@ -11,7 +11,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 32px;
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
+  padding-bottom: 16px;
+  padding-left: calc(32px + env(safe-area-inset-left, 0px));
+  padding-right: calc(32px + env(safe-area-inset-right, 0px));
   background: var(--nav-home-bg);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--nav-home-border);
@@ -127,7 +130,10 @@
 /* Mobile responsive styles */
 @media (max-width: 768px) {
   .globalNavbar {
-    padding: 12px 16px;
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+    padding-bottom: 12px;
+    padding-left: calc(16px + env(safe-area-inset-left, 0px));
+    padding-right: calc(16px + env(safe-area-inset-right, 0px));
   }
   .navBrand {
     font-size: 20px;
@@ -312,8 +318,8 @@
 
 .floatingUserDropdownWrapper {
   position: absolute;
-  top: 20px;
-  right: 20px;
+  top: calc(20px + env(safe-area-inset-top, 0px));
+  right: calc(20px + env(safe-area-inset-right, 0px));
   z-index: 1000;
 }
 
