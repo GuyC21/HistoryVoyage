@@ -91,6 +91,15 @@
   margin-bottom: 20px;
 }
 
+.drawerTopActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  margin-bottom: 12px;
+  width: 100%;
+}
+
 .drawerTag {
   display: inline-block;
   font-size: 11px;
@@ -101,8 +110,7 @@
   background: var(--accent-bg);
   padding: 4px 10px;
   border-radius: 6px;
-  margin-top: 16px;
-  margin-bottom: 12px;
+  margin: 0;
   align-self: flex-start;
 }
 
@@ -469,9 +477,11 @@
   .siteDrawer.hasImage.collapsed .drawerScrollContainer {
     display: grid;
     grid-template-areas: 
+      "header lang"
       "header image"
       "actions tag";
     grid-template-columns: 1fr 120px;
+    grid-template-rows: auto 85px auto;
     gap: 12px;
     overflow-y: hidden;
     align-content: center;
@@ -481,6 +491,7 @@
     display: grid;
     grid-template-areas: 
       "header"
+      "lang"
       "tag"
       "actions";
     grid-template-columns: 1fr;
@@ -489,17 +500,45 @@
     align-content: center;
   }
 
-  .siteDrawer.collapsed .drawerTag {
-    grid-area: tag;
-    margin-bottom: 0;
-    margin-top: 0;
+  .siteDrawer.collapsed .drawerTopActions {
+    display: contents;
+  }
+
+  .siteDrawer.collapsed .drawerLanguageSelector {
+    grid-area: lang;
     align-self: center;
     justify-self: center;
+  }
+
+  .siteDrawer.collapsed .drawerTag {
+    grid-area: tag;
+    margin: 0;
+    align-self: start;
+    justify-self: center;
+    margin-top: 4px; /* Slight visual adjustment to match button text baseline */
   }
 
   .siteDrawer.collapsed .drawerHeader {
     grid-area: header;
     margin-bottom: 0;
+    align-self: start;
+  }
+
+  .siteDrawer.collapsed .drawerTitle {
+    font-size: 20px;
+    margin-bottom: 2px;
+  }
+
+  .siteDrawer.collapsed .drawerNativeName {
+    margin-top: 0;
+    margin-bottom: 6px;
+    font-size: 12px;
+  }
+
+  .siteDrawer.collapsed .drawerMeta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
 
   .siteDrawer.collapsed .drawerDivider,
@@ -521,6 +560,8 @@
   .siteDrawer.collapsed .actionButtonsRow {
     grid-area: actions;
     margin-top: 0;
+    margin-bottom: 0;
+    align-self: start;
   }
 
   .dragHandleContainer {

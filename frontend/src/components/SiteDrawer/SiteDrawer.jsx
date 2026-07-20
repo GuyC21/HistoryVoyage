@@ -304,9 +304,27 @@ export default function SiteDrawer({
               />
             </div>
           )}
-          <span className={styles.drawerTag}>
-            {category.emoji} {category.label}
-          </span>
+          <div className={styles.drawerTopActions}>
+            <span className={styles.drawerTag}>
+              {category.emoji} {category.label}
+            </span>
+            {site.wikidata && (
+              <div className={styles.drawerLanguageSelector}>
+                <button
+                  className={`${styles.drawerLangBtn} ${languageMode === 'en' ? styles.active : ''}`}
+                  onClick={() => setLanguageMode('en')}
+                >
+                  EN
+                </button>
+                <button
+                  className={`${styles.drawerLangBtn} ${languageMode === 'local' ? styles.active : ''}`}
+                  onClick={() => setLanguageMode('local')}
+                >
+                  Local
+                </button>
+              </div>
+            )}
+          </div>
           <div className={styles.drawerHeader}>
             <h2 className={styles.drawerTitle}>
               {displayName}
@@ -427,24 +445,6 @@ export default function SiteDrawer({
                   </div>
                 )}
               </div>
-
-              {/* Inline Language Selector */}
-              {site.wikidata && (
-                <div className={styles.drawerLanguageSelector}>
-                  <button
-                    className={`${styles.drawerLangBtn} ${languageMode === 'en' ? styles.active : ''}`}
-                    onClick={() => setLanguageMode('en')}
-                  >
-                    EN
-                  </button>
-                  <button
-                    className={`${styles.drawerLangBtn} ${languageMode === 'local' ? styles.active : ''}`}
-                    onClick={() => setLanguageMode('local')}
-                  >
-                    Local
-                  </button>
-                </div>
-              )}
             </div>
           </div>
 
