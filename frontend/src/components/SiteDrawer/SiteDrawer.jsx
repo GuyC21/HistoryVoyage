@@ -38,7 +38,6 @@ export default function SiteDrawer({
   const [isEditingWikidata, setIsEditingWikidata] = useState(false)
   const [editWikidataVal, setEditWikidataVal] = useState('')
   const [updatingWikidata, setUpdatingWikidata] = useState(false)
-
   // Mobile drawer state
   const [isExpanded, setIsExpanded] = useState(false)
   const touchStartY = useRef(null)
@@ -305,9 +304,27 @@ export default function SiteDrawer({
               />
             </div>
           )}
-          <span className={styles.drawerTag}>
-            {category.emoji} {category.label}
-          </span>
+          <div className={styles.drawerTopActions}>
+            <span className={styles.drawerTag}>
+              {category.emoji} {category.label}
+            </span>
+            {site.wikidata && (
+              <div className={styles.drawerLanguageSelector}>
+                <button
+                  className={`${styles.drawerLangBtn} ${languageMode === 'en' ? styles.active : ''}`}
+                  onClick={() => setLanguageMode('en')}
+                >
+                  EN
+                </button>
+                <button
+                  className={`${styles.drawerLangBtn} ${languageMode === 'local' ? styles.active : ''}`}
+                  onClick={() => setLanguageMode('local')}
+                >
+                  Local
+                </button>
+              </div>
+            )}
+          </div>
           <div className={styles.drawerHeader}>
             <h2 className={styles.drawerTitle}>
               {displayName}
@@ -324,9 +341,12 @@ export default function SiteDrawer({
               </div>
             )}
 
+            <h3 className={styles.sectionTitle}>Location</h3>
             <div className={styles.drawerLanguageRow}>
               <div className={styles.drawerMeta}>
-                <span>📍 {site.country}</span>
+                <span className={`${styles.addressText} ${(!isMobile || isExpanded) ? styles.expanded : ''}`}>
+                  📍 {site.address || site.country}
+                </span>
                 {isEditingWikidata ? (
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', margin: '4px 0' }}>
                     <span style={{ fontSize: '12px' }}>🆔</span>
@@ -425,42 +445,10 @@ export default function SiteDrawer({
                   </div>
                 )}
               </div>
-
-              {/* Inline Language Selector */}
-              {site.wikidata && (
-                <div className={styles.drawerLanguageSelector}>
-                  <button
-                    className={`${styles.drawerLangBtn} ${languageMode === 'en' ? styles.active : ''}`}
-                    onClick={() => setLanguageMode('en')}
-                  >
-                    EN
-                  </button>
-                  <button
-                    className={`${styles.drawerLangBtn} ${languageMode === 'local' ? styles.active : ''}`}
-                    onClick={() => setLanguageMode('local')}
-                  >
-                    Local
-                  </button>
-                </div>
-              )}
             </div>
           </div>
 
           <div className={styles.drawerDivider}></div>
-
-          <div className={styles.drawerBody}>
-            {(() => {
-              const activeDescription = displayDescription || (
-                languageMode === 'en' 
-                  ? 'No English description available for this historical site. You can explore more about it on Wikidata or search for its historical context in the region.'
-                  : 'אין תיאור זמין או non è disponibile alcuna descrizione per questo sito storico.'
-              )
-              const limit = site.imageUrl ? 60 : 140
-              const isDescriptionLong = activeDescription.length > limit
-
-              return <p>{activeDescription}</p>
-            })()}
-          </div>
 
           <div className={styles.actionButtonsRow}>
             {(() => {
@@ -550,6 +538,21 @@ export default function SiteDrawer({
                   {isAdding ? 'Adding...' : `➕ Add`}
                 </button>
               )
+            })()}
+          </div>
+
+          <h3 className={styles.sectionTitle}>Overview</h3>
+          <div className={styles.drawerBody}>
+            {(() => {
+              const activeDescription = displayDescription || (
+                languageMode === 'en' 
+                  ? 'No English description available for this historical site. You can explore more about it on Wikidata or search for its historical context in the region.'
+                  : 'אין תיאור זמין או non è disponibile alcuna descrizione per questo sito storico.'
+              )
+              const limit = site.imageUrl ? 60 : 140
+              const isDescriptionLong = activeDescription.length > limit
+
+              return <p>{activeDescription}</p>
             })()}
           </div>
           </div>

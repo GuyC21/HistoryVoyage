@@ -107,6 +107,7 @@ class HistoricalSite(models.Model):
     site_type = models.CharField(max_length=50, choices=SITE_TYPES, default='other')
     location = models.PointField()  # Holds the Point geometry (latitude & longitude)
     country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name='sites')
+    address = models.TextField(blank=True, null=True, help_text="Full formatted address derived from reverse geocoding")
     description = models.TextField(blank=True, null=True)
     wikidata = models.CharField(max_length=100, blank=True, null=True)
     english_name = models.CharField(max_length=255, blank=True, null=True)

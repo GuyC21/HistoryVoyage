@@ -7,6 +7,7 @@ of local database texts using external translation clients.
 
 import logging
 from deep_translator import GoogleTranslator
+from geopy.geocoders import Photon
 from .models import HistoricalSite
 
 logger = logging.getLogger(__name__)
@@ -53,5 +54,30 @@ def translate_site_details(site: HistoricalSite) -> HistoricalSite:
             
     except Exception as e:
         logger.error(f"Failed to translate site {site.id}: {e}")
+        
+    return site
+
+def resolve_site_address(site: HistoricalSite) -> HistoricalSite:
+    """
+    On-demand address resolution for a historical site.
+
+    Connects to the Photon Geocoder (OSM-based). If successful, populates
+    the address field and saves it. Fails gracefully.
+    """
+    if site.address:
+        return site
+
+    try:
+        # Provide a short timeout to prevent slow API requests from hanging the frontend.
+        geolocator = Photon(user_agent="history_voyage_app_v1", timeout=3)
+        lat, lon = site.location.y, site.location.x
+        location = geolocator.reverse((lat, lon), exactly_one=True, language='en')
+        
+        if location and location.address:
+            site.address = location.address
+            site.save(update_fields=['address'])
+            
+    except Exception as e:
+        logger.error(f"Failed to resolve address for site {site.id}: {e}")
         
     return site

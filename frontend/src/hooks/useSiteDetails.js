@@ -96,10 +96,11 @@ export const useSiteDetails = (mapInstance, setActivePolygon) => {
               if (props.englishDescription) backendEnglishDescription = props.englishDescription
               if (props.description) backendLocalDescription = props.description
               
-              if (props.boundary) {
+              if (props.boundary || props.address) {
                 setSelectedSite((prev) => {
                   if (prev && prev.id === siteDetails.id) {
-                    setActivePolygon(props.boundary)
+                    if (props.boundary) setActivePolygon(props.boundary)
+                    return { ...prev, boundary: props.boundary, address: props.address || prev.address }
                   }
                   return prev
                 })
