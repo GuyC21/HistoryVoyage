@@ -38,7 +38,6 @@ export default function SiteDrawer({
   const [isEditingWikidata, setIsEditingWikidata] = useState(false)
   const [editWikidataVal, setEditWikidataVal] = useState('')
   const [updatingWikidata, setUpdatingWikidata] = useState(false)
-
   // Mobile drawer state
   const [isExpanded, setIsExpanded] = useState(false)
   const touchStartY = useRef(null)
@@ -327,7 +326,9 @@ export default function SiteDrawer({
             <h3 className={styles.sectionTitle}>Location</h3>
             <div className={styles.drawerLanguageRow}>
               <div className={styles.drawerMeta}>
-                <span>📍 {site.address || site.country}</span>
+                <span className={`${styles.addressText} ${(!isMobile || isExpanded) ? styles.expanded : ''}`}>
+                  📍 {site.address || site.country}
+                </span>
                 {isEditingWikidata ? (
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', margin: '4px 0' }}>
                     <span style={{ fontSize: '12px' }}>🆔</span>
