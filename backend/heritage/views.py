@@ -12,7 +12,7 @@ from django.conf import settings
 
 from .models import HistoricalSite, Country
 from .serializers import HistoricalSiteListSerializer, HistoricalSiteDetailSerializer, CountrySerializer
-from .services import translate_site_details
+from .services import translate_site_details, resolve_site_address
 from .selectors import get_sites_in_bbox, search_sites_by_text, get_sites_nearby
 
 class CountryViewSet(viewsets.ReadOnlyModelViewSet):
@@ -57,6 +57,9 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
         
         # Translate on-the-fly via services layer if missing
         instance = translate_site_details(instance)
+        
+        # Resolve address on-the-fly if missing
+        instance = resolve_site_address(instance)
                 
         serializer = self.get_serializer(instance)
         return Response(serializer.data)

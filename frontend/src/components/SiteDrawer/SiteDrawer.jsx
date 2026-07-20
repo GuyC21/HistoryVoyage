@@ -324,9 +324,10 @@ export default function SiteDrawer({
               </div>
             )}
 
+            <h3 className={styles.sectionTitle}>Location</h3>
             <div className={styles.drawerLanguageRow}>
               <div className={styles.drawerMeta}>
-                <span>📍 {site.country}</span>
+                <span>📍 {site.address || site.country}</span>
                 {isEditingWikidata ? (
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', margin: '4px 0' }}>
                     <span style={{ fontSize: '12px' }}>🆔</span>
@@ -448,20 +449,6 @@ export default function SiteDrawer({
 
           <div className={styles.drawerDivider}></div>
 
-          <div className={styles.drawerBody}>
-            {(() => {
-              const activeDescription = displayDescription || (
-                languageMode === 'en' 
-                  ? 'No English description available for this historical site. You can explore more about it on Wikidata or search for its historical context in the region.'
-                  : 'אין תיאור זמין או non è disponibile alcuna descrizione per questo sito storico.'
-              )
-              const limit = site.imageUrl ? 60 : 140
-              const isDescriptionLong = activeDescription.length > limit
-
-              return <p>{activeDescription}</p>
-            })()}
-          </div>
-
           <div className={styles.actionButtonsRow}>
             {(() => {
               const wikiUrl = languageMode === 'en' 
@@ -550,6 +537,21 @@ export default function SiteDrawer({
                   {isAdding ? 'Adding...' : `➕ Add`}
                 </button>
               )
+            })()}
+          </div>
+
+          <h3 className={styles.sectionTitle}>Overview</h3>
+          <div className={styles.drawerBody}>
+            {(() => {
+              const activeDescription = displayDescription || (
+                languageMode === 'en' 
+                  ? 'No English description available for this historical site. You can explore more about it on Wikidata or search for its historical context in the region.'
+                  : 'אין תיאור זמין או non è disponibile alcuna descrizione per questo sito storico.'
+              )
+              const limit = site.imageUrl ? 60 : 140
+              const isDescriptionLong = activeDescription.length > limit
+
+              return <p>{activeDescription}</p>
             })()}
           </div>
           </div>

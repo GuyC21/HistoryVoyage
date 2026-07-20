@@ -30,7 +30,7 @@ class HistoricalSiteListSerializer(GeoFeatureModelSerializer):
     class Meta:
         model = HistoricalSite
         geo_field = 'location'
-        fields = ('id', 'name', 'site_type', 'country', 'description', 'wikidata', 'englishName', 'englishDescription', 'osmType', 'osmId')
+        fields = ('id', 'name', 'site_type', 'country', 'address', 'description', 'wikidata', 'englishName', 'englishDescription', 'osmType', 'osmId')
 
 class HistoricalSiteDetailSerializer(GeoFeatureModelSerializer):
     """
@@ -48,4 +48,4 @@ class HistoricalSiteDetailSerializer(GeoFeatureModelSerializer):
     class Meta:
         model = HistoricalSite
         geo_field = 'location'
-        fields = ('id', 'name', 'site_type', 'country', 'description', 'wikidata', 'englishName', 'englishDescription', 'osmType', 'osmId', 'boundary')
+        fields = ('id', 'name', 'site_type', 'country', 'address', 'description', 'wikidata', 'englishName', 'englishDescription', 'osmType', 'osmId', 'boundary')
