@@ -22,7 +22,7 @@ export default function ProtectedRoute() {
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
-        height: '100vh',
+        height: '100dvh',
         backgroundColor: '#0a0d14',
         position: 'relative',
         color: '#ffffff',
