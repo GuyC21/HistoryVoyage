@@ -1,240 +1,546 @@
-/* Custom Floating Header */
-.floatingHeader {
+/* Native Floating Header Container */
+.nativeHeaderWrapper {
   position: absolute;
-  top: 20px;
-  left: 20px;
-  z-index: 10;
+  top: 16px;
+  left: 16px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 580px;
+  width: calc(100% - 32px);
+  pointer-events: none; /* Allow map panning around pills */
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nativeHeaderWrapper.shifted {
+  transform: translateX(340px);
+}
+
+/* 1. Main Command Pill Search Bar */
+.commandBar {
+  pointer-events: auto;
+  position: relative;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   background: var(--bg-translucent);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-lg);
-  border-radius: 16px;
-  padding: 16px 24px;
-  max-width: 400px;
-  pointer-events: auto;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.floatingHeader.shifted {
-  left: 360px;
-}
-
-.floatingHeader h1 {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--text-h);
-  margin: 0 0 4px 0;
-  letter-spacing: -0.5px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.floatingHeader p {
-  font-size: 14px;
-  margin: 0 0 12px 0;
-  line-height: 1.4;
-}
-
-.statsBar {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.statBadge {
-  font-size: 12px;
-  font-weight: 500;
-  padding: 4px 10px;
-  border-radius: 20px;
-  background: var(--accent-bg);
-  border: 1px solid var(--accent-border);
-  color: var(--accent);
-}
-
-/* Floating Site-Type Filters */
-.filtersContainer {
-  display: flex;
-  gap: 6px;
-  margin-top: 12px;
-  flex-wrap: wrap;
-}
-
-.filterBtn {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.filterBtn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.filterBtn.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #ffffff !important;
-}
-
-/* Header UI Elements */
-.headerTopRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-  width: 100%;
-  gap: 16px;
-}
-
-.floatingHeader h1 {
-  margin: 0 !important; /* override previous margin */
-}
-
-.languageToggle {
-  display: inline-flex;
-  background: var(--border);
-  border-radius: 8px;
-  padding: 2px;
-  border: 1px solid var(--border);
-  align-items: center;
-}
-
-.languageToggleBtn {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 4px 10px;
-  border: none;
-  background: transparent;
-  color: var(--text);
-  cursor: pointer;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.languageToggleBtn.active {
-  background: var(--bg);
-  color: var(--text-h);
-  box-shadow: var(--shadow-sm);
-}
-
-/* Mobile responsive styles */
-@media (max-width: 768px) {
-  .floatingHeader {
-    top: 10px;
-    left: 10px;
-    right: 10px;
-    max-width: none;
-    padding: 12px 16px;
-  }
-  
-  .floatingHeader h1 {
-    display: none !important;
-  }
-
-  .floatingHeader p {
-    display: none !important;
-  }
-
-  .floatingHeader.shifted {
-    left: 10px !important;
-  }
-}
-
-/* Active Voyage Panel and Segmented Control */
-.voyagePanel {
-  background: var(--bg-translucent);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px 14px;
-  margin-bottom: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  box-shadow: var(--shadow-sm);
-  transition: all 0.3s ease;
-}
-
-.voyageTitle {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--accent);
-  margin: 0;
-  line-height: 1.2;
-}
-
-.voyageStopsCount {
-  font-size: 0.75rem;
-  color: var(--text);
-  margin-top: 2px;
-  display: block;
-}
-
-.segmentedControl {
-  display: flex;
-  background: var(--border);
-  border-radius: 20px;
-  padding: 3px;
-  gap: 2px;
+  border-radius: 9999px;
+  padding: 4px 6px 4px 10px;
+  transition: all 0.25s ease;
   width: 100%;
   box-sizing: border-box;
 }
 
-.segmentBtn {
+.commandBar:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-bg), var(--shadow-lg);
+}
+
+.brandPill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 2px;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.brandEmoji {
+  font-size: 16px;
+}
+
+.brandTitle {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text-h);
+  white-space: nowrap;
+}
+
+.searchFlexWrapper {
   flex: 1;
-  font-size: 0.85rem;
+  min-width: 0;
+  position: relative;
+}
+
+/* Override SearchBar margin inside pill */
+.searchFlexWrapper :global(.SearchBar_searchContainer__2871x),
+.searchFlexWrapper > div {
+  margin: 0 !important;
+}
+
+.searchFlexWrapper input {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+  font-size: 13px !important;
+}
+
+/* Integrated Filter Dropdown Button & Popover */
+.filterDropdownWrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.filterBtnPill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+}
+
+.filterBtnPill:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.filterBtnPill.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff !important;
+}
+
+.filterBtnLabel {
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  font-size: 8px;
+  opacity: 0.7;
+}
+
+/* Category Popover Menu */
+.categoryPopoverMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 280px;
+  background: var(--dropdown-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: var(--dropdown-shadow, var(--shadow-lg));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 999999 !important;
+  animation: popoverFadeIn 0.2s ease;
+}
+
+@keyframes popoverFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.popoverHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--accent);
+}
+
+.popoverCountBadge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text);
+  text-transform: none;
+  background: var(--border);
+  padding: 2px 8px;
+  border-radius: 9999px;
+}
+
+.categoryGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.categoryGridChip {
+  font-size: 11px;
   font-weight: 600;
   padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.categoryGridChip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.categoryGridChip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.chipEmoji {
+  font-size: 14px;
+}
+
+.chipLabel {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Language Toggle Capsule */
+.languagePill {
+  display: flex;
+  align-items: center;
+  background: var(--border);
+  border-radius: 9999px;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.langBtn {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
   border: none;
   background: transparent;
   color: var(--text);
   cursor: pointer;
-  border-radius: 18px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  white-space: nowrap;
+  border-radius: 9999px;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
 }
 
-.segmentBtn:hover:not(.active) {
+.langBtn.active {
+  background: var(--bg);
   color: var(--text-h);
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.segmentBtn.active {
-  background: var(--accent);
-  color: #ffffff !important;
   box-shadow: var(--shadow-sm);
 }
 
-.collapsibleContent {
-  max-height: 800px;
-  opacity: 1;
+/* Secondary Sub-Row for Mobile Language, Active Voyage & User Profile */
+.subRow {
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.desktopOnly {
+  display: flex;
+}
+
+.mobileOnly {
+  display: none;
+}
+
+/* Compact Active Voyage Context Badge */
+.voyageBadgeWrapper {
+  pointer-events: auto;
+  position: relative;
+}
+
+.voyageBadgePill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  background: var(--bg-translucent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--accent);
+  color: var(--text-h);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.voyageBadgePill:hover {
+  background: var(--accent-bg);
+}
+
+.voyageIcon {
+  font-size: 12px;
+}
+
+.voyageTitleText strong {
+  color: var(--accent);
+}
+
+.voyageChevron {
+  font-size: 8px;
+  opacity: 0.7;
+}
+
+/* Voyage Popover Menu */
+.voyagePopoverMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 240px;
+  background: var(--bg-translucent);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 1500;
+  animation: popoverFadeIn 0.2s ease;
+}
+
+.voyagePopoverHeader {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--accent);
+}
+
+.voyageSegmentGrid {
+  display: flex;
+  background: var(--border);
+  border-radius: 9999px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.voyageSegmentBtn {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  border-radius: 9999px;
+  transition: all 0.2s ease;
+}
+
+.voyageSegmentBtn.active {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.itineraryActionBtn {
+  width: 100%;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 9999px;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.itineraryActionBtn:hover {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+/* User Profile Badge & Popover */
+.userBadgeWrapper {
+  pointer-events: auto;
+  position: relative;
+}
+
+.userBadgePill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  background: var(--bg-translucent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  color: var(--text-h);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.userBadgePill:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.userIcon {
+  font-size: 12px;
+}
+
+.userNameText {
+  max-width: 90px;
   overflow: hidden;
-  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, margin-top 0.4s ease;
-  margin-top: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.collapsibleContent.collapsed {
-  max-height: 0;
-  opacity: 0;
-  margin-top: 0;
-  pointer-events: none;
+.userChevron {
+  font-size: 8px;
+  opacity: 0.7;
 }
 
+.userPopoverMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: max-content;
+  min-width: 118px;
+  background: var(--bg-translucent);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 4px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 9999;
+  animation: popoverFadeIn 0.2s ease;
+}
+
+.userPopoverItem {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-h) !important;
+  text-decoration: none !important;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.userPopoverItem:hover {
+  background: var(--accent-bg) !important;
+  color: var(--accent) !important;
+}
+
+.userPopoverDivider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+.btnSignout {
+  color: #ef4444 !important;
+}
+
+.btnSignout:hover {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #ef4444 !important;
+}
+
+.authLinksGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.authLinkBtn {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--bg-translucent);
+  color: var(--text-h);
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.authLinkBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.authLinkBtn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+/* Mobile & Tablet Responsiveness */
+@media (max-width: 640px) {
+  .nativeHeaderWrapper {
+    top: 10px;
+    left: 10px;
+    width: calc(100% - 20px);
+    max-width: none;
+  }
+
+  .brandTitle {
+    display: none;
+  }
+
+  .desktopOnly {
+    display: none !important;
+  }
+
+  .mobileOnly {
+    display: flex !important;
+  }
+
+  .filterBtnLabel {
+    max-width: 60px;
+  }
+
+  .categoryPopoverMenu {
+    right: -10px;
+    width: calc(100vw - 32px);
+    max-width: 290px;
+  }
+}

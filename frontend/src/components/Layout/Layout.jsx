@@ -127,7 +127,7 @@ export default function Layout() {
       )}
 
       {isExplore && user && (
-        <div className={styles.floatingUserDropdownWrapper} ref={dropdownRef}>
+        <div className={`${styles.floatingUserDropdownWrapper} ${styles.desktopOnly}`} ref={dropdownRef}>
           <button 
             className={styles.userBadge} 
             onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -176,6 +176,7 @@ export default function Layout() {
           )}
         </div>
       )}
+
       <main className={styles.layoutContent}>
         {showHeroBg && (
           <>

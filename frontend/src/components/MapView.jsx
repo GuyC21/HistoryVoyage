@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
-import { TileLayer, Marker, Polygon, Circle, useMapEvents } from 'react-leaflet'
+import { TileLayer, Marker, Polygon, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 
 const iconCache = {}
@@ -184,8 +184,6 @@ export default function MapView({
   currentZoom, 
   minZoomGate,
   activePolygon,
-  nearbyCenter,
-  nearbyRadius,
   isVoyageOnlyView
 }) {
   /**
@@ -251,21 +249,6 @@ export default function MapView({
         />
       )}
 
-      {nearbyCenter && (
-        <Circle
-          center={[nearbyCenter.lat, nearbyCenter.lng]}
-          radius={nearbyRadius}
-          pathOptions={{
-            color: '#3b82f6', // Premium blue stroke
-            fillColor: '#3b82f6', // Premium blue fill
-            fillOpacity: 0.12,
-            weight: 2,
-            dashArray: '5, 5',
-            className: 'radius-search-circle'
-          }}
-        />
-      )}
-      
       <MapEventsHandler 
         onBoundsChange={onBoundsChange} 
         onZoomChange={onZoomChange} 

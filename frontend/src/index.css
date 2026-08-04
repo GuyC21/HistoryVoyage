@@ -22,7 +22,7 @@
   --nav-home-text-hover-bg: rgba(255, 255, 255, 0.1);
   
   /* Dropdown Variables */
-  --dropdown-bg: rgba(15, 23, 42, 0.95);
+  --dropdown-bg: rgba(15, 23, 42, 0.96);
   --dropdown-border: rgba(255, 255, 255, 0.15);
   --dropdown-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   
@@ -66,7 +66,7 @@
   --nav-home-text-hover-bg: rgba(255, 255, 255, 0.4);
   
   /* Dropdown Variables */
-  --dropdown-bg: rgba(255, 255, 255, 0.85);
+  --dropdown-bg: rgba(255, 255, 255, 0.96);
   --dropdown-border: rgba(255, 255, 255, 0.4);
   --dropdown-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
   

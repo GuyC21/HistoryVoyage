@@ -13,7 +13,7 @@ from django.conf import settings
 from .models import HistoricalSite, Country
 from .serializers import HistoricalSiteListSerializer, HistoricalSiteDetailSerializer, CountrySerializer
 from .services import translate_site_details, resolve_site_address
-from .selectors import get_sites_in_bbox, search_sites_by_text, get_sites_nearby
+from .selectors import get_sites_in_bbox, search_sites_by_text
 
 class CountryViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -108,44 +108,6 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
             return get_sites_in_bbox(queryset, bbox_str, limit=limit)
                 
         return queryset
-
-    @action(detail=False, methods=['get'], url_path='nearby')
-    def nearby(self, request):
-        """
-        Performs a geographic radius query to retrieve nearby historical sites.
-
-        URL Format:
-            /api/sites/nearby/?lat=31.7683&lng=35.2137&radius=5000
-
-        Query Params:
-            lat (str/float): Latitude coordinate of the center.
-            lng (str/float): Longitude coordinate of the center.
-            radius (str/float): Maximum distance radius in meters.
-
-        Returns:
-            Response: A DRF Response containing serialized GeoJSON feature collections,
-                or a HTTP 400 Bad Request if arguments are missing or invalid.
-        """
-        lat = request.query_params.get('lat')
-        lng = request.query_params.get('lng')
-        radius_m = request.query_params.get('radius')
-
-        if not (lat and lng and radius_m):
-            return Response(
-                {"error": "Please provide 'lat', 'lng', and 'radius' (in meters) query parameters."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            queryset = self.get_queryset()
-            sites = get_sites_nearby(queryset, float(lat), float(lng), float(radius_m))
-            serializer = self.get_serializer(sites, many=True)
-            return Response(serializer.data)
-        except ValueError:
-            return Response(
-                {"error": "Invalid 'lat', 'lng', or 'radius' values. They must be numeric."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
 
     @action(detail=True, methods=['patch'], url_path='update-wikidata', permission_classes=[permissions.IsAdminUser])
     def update_wikidata(self, request, pk=None):

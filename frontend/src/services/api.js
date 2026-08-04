@@ -108,20 +108,6 @@ export const backendApi = {
   },
 
   /**
-   * Queries nearby historical sites situated within a given radius.
-   * 
-   * @param {number} lat - Center latitude.
-   * @param {number} lng - Center longitude.
-   * @param {number} radiusMeters - Maximum radius in meters.
-   * @param {AbortController} [abortController] - Optional cancel token reference.
-   * @returns {Promise<Object>} Resolved sites list GeoJSON payload.
-   */
-  fetchNearbySites: async (lat, lng, radiusMeters, abortController) => {
-    const res = await apiFetch(`${API_BASE}/api/sites/nearby/?lat=${lat}&lng=${lng}&radius=${radiusMeters}`, { signal: abortController?.signal })
-    return handleResponse(res, 'Failed to fetch nearby sites')
-  },
-
-  /**
    * Fetches all available countries.
    */
   fetchCountries: async (abortController) => {

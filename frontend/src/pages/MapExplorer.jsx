@@ -99,43 +99,15 @@ export default function MapExplorer() {
   /** @type {string|null} Active status text displayed in the toast notification. */
   const [toast, setToast] = useState(null)
 
-  /** @type {Object|null} Location center for circular radius searches: {lat, lng}. */
-  const [nearbyCenter, setNearbyCenter] = useState(null)
-
-  /** @type {number} Radius search limit boundary in meters. */
-  const [nearbyRadius, setNearbyRadius] = useState(5000)
-
   /** @type {boolean} Controls visibility of the left collapsible Itinerary sidebar. */
   const [isItineraryOpen, setIsItineraryOpen] = useState(false)
   
   /** @type {React.RefObject} Ref containing locate functions exposed by GeolocationHandler. */
   const geoRef = useRef(null)
 
-  /**
-   * Triggers a circular radius search around the current center coordinates of the map.
-   * 
-   * @param {number} radiusMeters - The distance radius in meters.
-   */
-  const handleTriggerNearby = (radiusMeters) => {
-    if (mapInstance) {
-      const center = mapInstance.getCenter()
-      setNearbyCenter({ lat: center.lat, lng: center.lng })
-      setNearbyRadius(radiusMeters)
-    } else {
-      setToast("Map is not loaded yet.")
-    }
-  }
-
-  /**
-   * Clears the active radius search criteria and resets map filters.
-   */
-  const handleClearNearby = () => {
-    setNearbyCenter(null)
-  }
-
   // Custom Hooks for business logic
   
-  const { sites, loading, error } = useMapData(bounds, nearbyCenter, nearbyRadius, activeFilter)
+  const { sites, loading, error } = useMapData(bounds, activeFilter)
   
   // Controls individual historical site details retrieval, images loading, and drawer slides
   const { 
@@ -316,9 +288,6 @@ export default function MapExplorer() {
         onQuickJump={handleQuickJump}
         onLocateUser={() => geoRef.current?.locate()}
         onSelectSite={handleSelectSite}
-        onTriggerNearby={handleTriggerNearby}
-        onClearNearby={handleClearNearby}
-        nearbyCenter={nearbyCenter}
         activeVoyage={activeVoyage}
         isVoyageOnlyView={isVoyageOnlyView}
         toggleVoyageView={toggleVoyageView}
@@ -460,8 +429,6 @@ export default function MapExplorer() {
             currentZoom={zoom}
             minZoomGate={MIN_ZOOM_GATE}
             activePolygon={activePolygon}
-            nearbyCenter={nearbyCenter}
-            nearbyRadius={nearbyRadius}
             isVoyageOnlyView={isVoyageOnlyView}
           />
 

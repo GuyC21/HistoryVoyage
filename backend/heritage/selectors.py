@@ -6,9 +6,7 @@ implementing bounding-box limits, geographic radius queries, and ranked text sea
 """
 
 from django.db.models import QuerySet, Q, Case, When, Value, IntegerField, ExpressionWrapper, BooleanField
-from django.contrib.gis.geos import Point, Polygon
-from django.contrib.gis.measure import D
-from django.contrib.gis.db.models.functions import Distance
+from django.contrib.gis.geos import Polygon
 from .models import HistoricalSite
 
 def get_sites_in_bbox(queryset: QuerySet, bbox_str: str, limit: int = 100) -> QuerySet:
@@ -84,27 +82,3 @@ def search_sites_by_text(queryset: QuerySet, search_query: str, limit: int = 15)
     
     return queryset[:limit]
 
-def get_sites_nearby(queryset: QuerySet, lat: float, lng: float, radius_m: float) -> QuerySet:
-    """
-    Retrieves historical sites situated within a given distance of a point.
-
-    Computes spatial distances on the database server using GeoDjango spatial functions,
-    annotating each record with the calculated distance.
-
-    Args:
-        queryset (QuerySet): Base query set of HistoricalSite instances to filter.
-        lat (float): The latitude of the center search point.
-        lng (float): The longitude of the center search point.
-        radius_m (float): The maximum search radius in meters.
-
-    Returns:
-        QuerySet: An annotated Django QuerySet of matching HistoricalSite instances,
-            ordered by distance (ascending).
-    """
-    point = Point(float(lng), float(lat), srid=4326)
-    
-    return queryset.filter(
-        location__distance_lte=(point, D(m=radius_m))
-    ).annotate(
-        distance=Distance('location', point)
-    ).order_by('distance')
