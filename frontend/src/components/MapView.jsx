@@ -12,43 +12,27 @@ const iconCache = {}
  * @param {boolean} isSelected - Whether the marker pin is currently selected.
  * @returns {L.DivIcon} Leaflet DivIcon instance.
  */
+const CATEGORY_MAP = {
+  castle: { emoji: '🏰', color: 'var(--color-castle)' },
+  ruins: { emoji: '🏛️', color: 'var(--color-ruins)' },
+  holy_site: { emoji: '⛪', color: 'var(--color-holy)' },
+  monument: { emoji: '🗽', color: 'var(--color-monument)' },
+  archaeological: { emoji: '🏺', color: 'var(--color-archaeological)' },
+  relation: { emoji: '🗺️', color: 'var(--color-other)' },
+  complex: { emoji: '🗺️', color: 'var(--color-other)' }
+}
+
 const getMarkerIcon = (siteType, isSelected, hasBoundary) => {
   const cacheKey = `${siteType}-${isSelected}-${hasBoundary}`
   if (iconCache[cacheKey]) {
     return iconCache[cacheKey]
   }
 
-  let color = 'var(--color-other)'
-  let iconSvg = ''
-
-  switch (siteType) {
-    case 'castle':
-      color = 'var(--color-castle)'
-      iconSvg = `<svg viewBox="0 0 24 24"><path d="M2 20h20v2H2zm2-2V8h3v2h2V8h4v2h2V8h3v2h2V8h2v10zM5 10v6h4v-6zm10 0v6h4v-6z"/></svg>`
-      break
-    case 'ruins':
-      color = 'var(--color-ruins)'
-      iconSvg = `<svg viewBox="0 0 24 24"><path d="M19 2H5v2h14zm-2 4H7v2h10zm-1 4H8v10h2V10h4v10h2zm3 12H3v2h18z"/></svg>`
-      break
-    case 'holy_site':
-      color = 'var(--color-holy)'
-      iconSvg = `<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 11h3v2h-3v3h-2v-3H8v-2h3V8h2z"/></svg>`
-      break
-    case 'monument':
-      color = 'var(--color-monument)'
-      iconSvg = `<svg viewBox="0 0 24 24"><path d="M17 19h2v2H5v-2h2V9l5-6 5 6zm-2-9l-3-3.6L9 10v9h6z"/></svg>`
-      break
-    case 'archaeological':
-      color = 'var(--color-archaeological)'
-      iconSvg = `<svg viewBox="0 0 24 24"><path d="M12 3a4 4 0 0 0-4 4v1a5 5 0 0 0-3 4.58V18a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3v-5.42A5 5 0 0 0 16 8V7a4 4 0 0 0-4-4zm-2 4a2 2 0 0 1 4 0v1h-4zm6 11H8v-5.42A3 3 0 0 1 10.58 10h2.84A3 3 0 0 1 16 12.58z"/></svg>`
-      break
-    default:
-      iconSvg = `<svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>`
-  }
+  const category = CATEGORY_MAP[siteType] || { emoji: '📍', color: 'var(--color-other)' }
 
   const html = `
-    <div class="custom-pin ${isSelected ? 'selected' : ''} ${hasBoundary ? 'has-boundary' : ''}" style="--marker-color: ${color}">
-      ${iconSvg}
+    <div class="custom-pin ${isSelected ? 'selected' : ''} ${hasBoundary ? 'has-boundary' : ''}" style="--marker-color: ${category.color}">
+      <span class="pin-icon">${category.emoji}</span>
     </div>
   `
 
