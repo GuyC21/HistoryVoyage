@@ -4,17 +4,14 @@ import { backendApi } from '~/services/api'
 /**
  * useMapData Custom Hook
  * 
- * Manages fetching lists of historical sites based on changing viewport coordinates (bounds)
- * or circular coordinates limits (nearbyCenter/nearbyRadius). Coordinates fetches using
- * standard AJAX cancel tokens (AbortController) to handle rapid map panning.
+ * Manages fetching lists of historical sites based on changing viewport coordinates (bounds).
+ * Coordinates fetches using standard AJAX cancel tokens (AbortController) to handle rapid map panning.
  * 
  * @param {string|null} bounds - Bounding box coordinates string ('west,south,east,north').
- * @param {Object|null} nearbyCenter - Circular center coordinates object: { lat, lng }.
- * @param {number} nearbyRadius - Search radius limit in meters.
  * @param {string} activeFilter - Active category key filter (e.g. 'castle', 'all').
  * @returns {{ sites: Array<Object>, loading: boolean, error: string|null }} Fetch states.
  */
-export const useMapData = (bounds, nearbyCenter, nearbyRadius, activeFilter) => {
+export const useMapData = (bounds, activeFilter) => {
   /** @type {Array<Object>} Features list mapped and filtered from backend geo-JSON. */
   const [sites, setSites] = useState([])
 
@@ -51,17 +48,12 @@ export const useMapData = (bounds, nearbyCenter, nearbyRadius, activeFilter) => 
       setError(null)
 
       try {
-        let data
-        if (nearbyCenter) {
-          data = await backendApi.fetchNearbySites(nearbyCenter.lat, nearbyCenter.lng, nearbyRadius, abortController)
-        } else {
-          if (!bounds) {
-            setSites([])
-            setLoading(false)
-            return
-          }
-          data = await backendApi.fetchSitesInBounds(bounds, activeFilter, abortController)
+        if (!bounds) {
+          setSites([])
+          setLoading(false)
+          return
         }
+        const data = await backendApi.fetchSitesInBounds(bounds, activeFilter, abortController)
         
         setSites(parseFeatures(data))
       } catch (err) {
@@ -79,7 +71,8 @@ export const useMapData = (bounds, nearbyCenter, nearbyRadius, activeFilter) => 
     return () => {
       abortController.abort()
     }
-  }, [bounds, nearbyCenter, nearbyRadius, activeFilter])
+  }, [bounds, activeFilter])
 
   return { sites, loading, error }
 }
+

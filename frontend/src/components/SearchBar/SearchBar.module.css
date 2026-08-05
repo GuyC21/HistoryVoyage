@@ -96,15 +96,15 @@
   margin: 6px 0 0 0;
   padding: 6px 0;
   list-style: none;
-  background: var(--bg-translucent);
+  background: var(--dropdown-bg);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--dropdown-shadow, var(--shadow-lg));
   max-height: 240px;
   overflow-y: auto;
-  z-index: 999;
+  z-index: 999999 !important;
 }
 
 .searchSuggestionItem {
@@ -176,3 +176,51 @@
   justify-content: center;
   flex-shrink: 0;
 }
+
+/* Quick Jumps Dropdown Styles */
+.quickJumpsDropdown {
+  padding: 8px 12px;
+}
+
+.quickJumpsHeader {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.quickJumpsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.quickJumpChip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.quickJumpChip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.quickJumpChip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+

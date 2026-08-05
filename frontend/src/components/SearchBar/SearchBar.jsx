@@ -194,12 +194,12 @@ export default function SearchBar({ onSelectSite }) {
         <input
           type="text"
           className={styles.searchInput}
-          placeholder="Search historical sites..."
+          placeholder="Search historical sites or cities..."
           value={query}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onFocus={() => {
-            if (suggestions.length > 0) setIsOpen(true)
+            if (query.trim() !== '' && suggestions.length > 0) setIsOpen(true)
           }}
         />
         {loading && <div className={styles.searchSpinner}></div>}
@@ -219,7 +219,7 @@ export default function SearchBar({ onSelectSite }) {
         )}
       </div>
 
-      {isOpen && (
+      {isOpen && query.trim() !== '' && (
         <ul className={styles.searchSuggestions} ref={dropdownRef}>
           {suggestions.length > 0 ? (
             suggestions.map((site, index) => {
@@ -260,3 +260,5 @@ export default function SearchBar({ onSelectSite }) {
     </div>
   )
 }
+
+

@@ -1,25 +1,17 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import SearchBar from '~/components/SearchBar'
+import { useAuth } from '~/context/AuthContext'
 import styles from './HeaderCard.module.css'
 
 /**
- * HeaderCard Component
- * Displays the main control panel floating in the upper-left corner of the map explorer view.
- * Includes application branding, interface language toggle, live status indicators,
- * tourist quick-jump buttons (Rome, Athens, Jerusalem), category filters, and a collapse button.
- *
- * @param {Object} props
- * @param {string} props.languageMode - Interface language preference ('en' or 'local').
- * @param {Function} props.setLanguageMode - Callback to update the interface language setting.
- * @param {number} props.zoom - Current map viewport zoom level.
- * @param {number} props.minZoomGate - Minimum zoom level required to display markers.
- * @param {number} props.visibleSitesCount - Number of sites currently within the map's visible bounds.
- * @param {string} props.activeFilter - Currently selected category filter ID.
- * @param {Function} props.setActiveFilter - Callback to change the selected category filter.
- * @param {Array<Object>} props.categories - Array of selectable categories (id, label, emoji).
- * @param {Function} props.onQuickJump - Callback to zoom/pan the map coordinates: (lat, lng) => void.
- * @param {Function} props.onLocateUser - Callback to trigger user geolocation and center the map on their location.
- * @param {Function} props.onSelectSite - Callback when a site is selected from the search bar.
+ * HeaderCard Component (Refactored Integrated Filter Bar)
+ * Displays a single, ultra-sleek command bar containing:
+ * - Brand logo pill
+ * - Search autocomplete bar
+ * - Category Filter Dropdown button ("Category ▾") with popover grid
+ * - Interface language toggle (EN / Local)
+ * - Sub-row containing compact Active Voyage badge & User Profile menu pill
  */
 export default function HeaderCard({
   languageMode,
@@ -30,257 +22,271 @@ export default function HeaderCard({
   activeFilter,
   setActiveFilter,
   categories,
-  onQuickJump,
-  onLocateUser,
   onSelectSite,
-  onTriggerNearby,
-  onClearNearby,
-  nearbyCenter,
   activeVoyage,
   isVoyageOnlyView,
   toggleVoyageView,
   isItineraryOpen,
   onToggleItinerary
 }) {
-  /** @type {boolean} Governs the visibility of the radius input search widget. */
-  const [showRadiusForm, setShowRadiusForm] = useState(false)
+  const { user, djangoUser, signOut } = useAuth()
+  const navigate = useNavigate()
 
-  /** @type {string} Text binding for the radius query distance field. Defaults to '5000' (meters). */
-  const [radiusInput, setRadiusInput] = useState('5000')
+  const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false)
+  const [isVoyageMenuOpen, setIsVoyageMenuOpen] = useState(false)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
 
-  /**
-   * @type {boolean} Collapsed status of the header panel.
-   * Restores settings from localStorage to preserve UI configuration layout.
-   */
-  const [isCollapsed, setIsCollapsed] = useState(() => {
-    try {
-      const saved = localStorage.getItem('history_voyage_header_collapsed')
-      return saved ? JSON.parse(saved) : false
-    } catch {
-      return false
+  const filterRef = useRef(null)
+  const voyageRef = useRef(null)
+  const userRef = useRef(null)
+
+  const activeCategoryObj = categories.find(c => c.id === activeFilter) || { label: 'All', emoji: '🌍' }
+
+  const getUserDisplayName = () => {
+    if (djangoUser && djangoUser.first_name) {
+      return djangoUser.first_name
     }
-  })
-
-  /**
-   * Toggles the collapse state of the control card panel, caching preference in localStorage.
-   */
-  const toggleCollapse = () => {
-    setIsCollapsed(prev => {
-      const next = !prev
-      try {
-        localStorage.setItem('history_voyage_header_collapsed', JSON.stringify(next))
-      } catch (e) {
-        console.error(e)
-      }
-      return next
-    })
+    return user?.email?.split('@')[0] || 'User'
   }
 
-  return (
-    <header className={`${styles.floatingHeader} ${isCollapsed ? styles.collapsed : ''} ${isItineraryOpen ? styles.shifted : ''}`}>
-      <div className={styles.headerTopRow} style={isCollapsed ? { marginBottom: 0 } : {}}>
-        <h1>
-          <span>🗺️</span> HistoryVoyage
-        </h1>
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {/* Global Language Selector */}
-          <div className={styles.languageToggle} title="Select Interface Language">
-            <button
-              className={`${styles.languageToggleBtn} ${languageMode === 'en' ? styles.active : ''}`}
-              onClick={() => setLanguageMode('en')}
-            >
-              EN
-            </button>
-            <button
-              className={`${styles.languageToggleBtn} ${languageMode === 'local' ? styles.active : ''}`}
-              onClick={() => setLanguageMode('local')}
-            >
-              Local
-            </button>
-          </div>
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      navigate('/')
+    } catch (err) {
+      console.error('Error logging out:', err)
+    }
+  }
 
-          {/* Collapse/Expand Toggle Button */}
+  // Close filter & user popovers on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (filterRef.current && !filterRef.current.contains(e.target)) {
+        setIsCategoryMenuOpen(false)
+      }
+      if (voyageRef.current && !voyageRef.current.contains(e.target)) {
+        setIsVoyageMenuOpen(false)
+      }
+      if (userRef.current && !userRef.current.contains(e.target)) {
+        setIsUserMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [])
+
+  return (
+    <header className={`${styles.nativeHeaderWrapper} ${isItineraryOpen ? styles.shifted : ''}`}>
+      {/* 1. Integrated Single Command Pill Search Bar */}
+      <div className={styles.commandBar}>
+        {/* Brand Logo Pill */}
+        <div className={styles.brandPill} title="HistoryVoyage Map Explorer">
+          <span className={styles.brandEmoji}>🗺️</span>
+          <span className={styles.brandTitle}>HistoryVoyage</span>
+        </div>
+
+        {/* Embedded SearchBar */}
+        <div className={styles.searchFlexWrapper}>
+          <SearchBar onSelectSite={onSelectSite} />
+        </div>
+
+        {/* Integrated Category Filter Button & Popover */}
+        <div className={styles.filterDropdownWrapper} ref={filterRef}>
           <button
-            className={styles.filterBtn}
-            onClick={toggleCollapse}
-            style={{
-              padding: '6px 10px',
-              fontSize: '11px',
-              fontWeight: '600',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minWidth: '28px',
-              height: '26px'
-            }}
-            title={isCollapsed ? "Expand panel" : "Collapse panel"}
-            aria-label={isCollapsed ? "Expand panel" : "Collapse panel"}
+            type="button"
+            className={`${styles.filterBtnPill} ${activeFilter !== 'all' ? styles.active : ''}`}
+            onClick={() => setIsCategoryMenuOpen(prev => !prev)}
+            title="Filter by category"
           >
-            {isCollapsed ? '▼' : '▲'}
+            <span>{activeCategoryObj.emoji}</span>
+            <span className={styles.filterBtnLabel}>
+              {activeFilter === 'all' ? 'Category' : activeCategoryObj.label}
+            </span>
+            <span className={styles.chevron}>{isCategoryMenuOpen ? '▲' : '▼'}</span>
+          </button>
+
+          {/* Category Popover Grid */}
+          {isCategoryMenuOpen && (
+            <div className={styles.categoryPopoverMenu}>
+              <div className={styles.popoverHeader}>
+                <span>Filter Sites</span>
+                <span className={styles.popoverCountBadge}>
+                  {zoom < minZoomGate ? 'Zoom In' : `${visibleSitesCount} visible`}
+                </span>
+              </div>
+
+              <div className={styles.categoryGrid}>
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    className={`${styles.categoryGridChip} ${activeFilter === cat.id ? styles.active : ''}`}
+                    onClick={() => {
+                      setActiveFilter(cat.id)
+                      setIsCategoryMenuOpen(false)
+                    }}
+                  >
+                    <span className={styles.chipEmoji}>{cat.emoji}</span>
+                    <span className={styles.chipLabel}>{cat.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Language Toggle Pill */}
+        <div className={`${styles.languagePill} ${styles.desktopOnly}`}>
+          <button
+            type="button"
+            className={`${styles.langBtn} ${languageMode === 'en' ? styles.active : ''}`}
+            onClick={() => setLanguageMode('en')}
+            title="English Mode"
+          >
+            EN
+          </button>
+          <button
+            type="button"
+            className={`${styles.langBtn} ${languageMode === 'local' ? styles.active : ''}`}
+            onClick={() => setLanguageMode('local')}
+            title="Local Language Mode"
+          >
+            Local
           </button>
         </div>
       </div>
 
-      <div className={`${styles.collapsibleContent} ${isCollapsed ? styles.collapsed : ''}`}>
-        <p>Explore ancient civilisations across Israel, Greece, and Italy.</p>
-
-        {/* Active Voyage Context Toggle */}
-        {activeVoyage && (
-          <div className={styles.voyagePanel}>
-            <h3 className={styles.voyageTitle}>
-              Active Voyage: {activeVoyage.title}
-            </h3>
-            <span className={styles.voyageStopsCount}>
-              📍 {activeVoyage.stops?.length || 0} stops planned
-            </span>
-            
-            <div className={styles.segmentedControl}>
-              <button 
-                onClick={() => isVoyageOnlyView && toggleVoyageView()}
-                className={`${styles.segmentBtn} ${!isVoyageOnlyView ? styles.active : ''}`}
-              >
-                🌍 Show All
-              </button>
-              <button 
-                onClick={() => !isVoyageOnlyView && toggleVoyageView()}
-                className={`${styles.segmentBtn} ${isVoyageOnlyView ? styles.active : ''}`}
-              >
-                🎯 Voyage Only
-              </button>
-            </div>
-
-            {/* View Itinerary Toggle Button */}
-            <button 
-              onClick={onToggleItinerary}
-              style={{
-                marginTop: '8px',
-                width: '100%',
-                background: isItineraryOpen ? 'var(--accent)' : 'var(--bg-translucent)',
-                color: isItineraryOpen ? '#ffffff' : 'var(--text-h)',
-                border: `1px solid ${isItineraryOpen ? 'var(--accent)' : 'var(--border)'}`,
-                padding: '8px 12px',
-                borderRadius: '20px',
-                fontSize: '0.85rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="8" y1="6" x2="21" y2="6" />
-                <line x1="8" y1="12" x2="21" y2="12" />
-                <line x1="8" y1="18" x2="21" y2="18" />
-                <line x1="3" y1="6" x2="3.01" y2="6" />
-                <line x1="3" y1="12" x2="3.01" y2="12" />
-                <line x1="3" y1="18" x2="3.01" y2="18" />
-              </svg>
-              {isItineraryOpen ? 'Hide Itinerary' : 'View Itinerary Stops'}
-            </button>
-          </div>
-        )}
-        
-        <SearchBar onSelectSite={onSelectSite} />
-        
-        <div className={styles.statsBar}>
-          <span className={styles.statBadge}>
-            {zoom < minZoomGate 
-              ? 'Zoom in to view' 
-              : `Visible: ${visibleSitesCount} sites`}
-          </span>
-          {activeFilter !== 'all' && (
-            <span className={styles.statBadge} style={{ background: 'var(--border)', color: 'var(--text-h)' }}>
-              Filter: {activeFilter}
-            </span>
-          )}
-        </div>
-
-        {/* Quick Jump Buttons for Tourists */}
-        <div className={styles.filtersContainer} style={{ marginTop: '10px', gap: '4px' }}>
-          <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-h)', alignSelf: 'center', marginRight: '4px' }}>Fly to:</span>
-          <button className={styles.filterBtn} onClick={() => onQuickJump(41.8902, 12.4922)}>🏟️ Rome</button>
-          <button className={styles.filterBtn} onClick={() => onQuickJump(37.9715, 23.7263)}>🏛️ Athens</button>
-          <button className={styles.filterBtn} onClick={() => onQuickJump(31.7767, 35.2227)}>🏰 Jerusalem</button>
-          <button className={styles.filterBtn} onClick={onLocateUser} title="Jump to my location">🎯 My Location</button>
-          <button 
-            className={`${styles.filterBtn} ${showRadiusForm || nearbyCenter ? styles.active : ''}`} 
-            onClick={() => setShowRadiusForm(prev => !prev)}
-            title="Search historical sites in a radius around the current map center"
+      {/* 2. Secondary Sub-Row for Mobile Language, Active Voyage & User Profile */}
+      <div className={styles.subRow}>
+        {/* Mobile Language Toggle Pill */}
+        <div className={`${styles.languagePill} ${styles.mobileOnly}`}>
+          <button
+            type="button"
+            className={`${styles.langBtn} ${languageMode === 'en' ? styles.active : ''}`}
+            onClick={() => setLanguageMode('en')}
+            title="English Mode"
           >
-            🔍 Find Nearby
+            EN
+          </button>
+          <button
+            type="button"
+            className={`${styles.langBtn} ${languageMode === 'local' ? styles.active : ''}`}
+            onClick={() => setLanguageMode('local')}
+            title="Local Language Mode"
+          >
+            Local
           </button>
         </div>
 
-        {/* Inline Radius Search Selector */}
-        {showRadiusForm && (
-          <div className={styles.filtersContainer} style={{ marginTop: '8px', padding: '6px 8px', background: 'var(--border)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-h)' }}>Radius (m):</span>
-            <input
-              type="number"
-              value={radiusInput}
-              onChange={(e) => setRadiusInput(e.target.value)}
-              min="1"
-              style={{
-                width: '80px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--input-border)',
-                borderRadius: '4px',
-                padding: '2px 6px',
-                color: 'var(--text-h)',
-                fontSize: '12px'
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  const r = parseFloat(radiusInput)
-                  if (!isNaN(r) && r > 0) {
-                    onTriggerNearby(r)
-                  }
-                }
-              }}
-            />
-            <button 
-              className={`${styles.filterBtn} ${styles.active}`} 
-              style={{ padding: '2px 8px' }}
-              onClick={() => {
-                const r = parseFloat(radiusInput)
-                if (!isNaN(r) && r > 0) {
-                  onTriggerNearby(r)
-                }
-              }}
+        {/* Compact Active Voyage Context Badge */}
+        {activeVoyage && (
+          <div className={styles.voyageBadgeWrapper} ref={voyageRef}>
+            <button
+              type="button"
+              className={styles.voyageBadgePill}
+              onClick={() => setIsVoyageMenuOpen(prev => !prev)}
+              title="Active Voyage Controls"
             >
-              Go
+              <span className={styles.voyageIcon}>📍</span>
+              <span className={styles.voyageTitleText}>
+                Voyage: <strong>{activeVoyage.title}</strong> ({activeVoyage.stops?.length || 0} stops)
+              </span>
+              <span className={styles.voyageChevron}>{isVoyageMenuOpen ? '▲' : '▼'}</span>
             </button>
-            <button 
-              className={styles.filterBtn} 
-              style={{ padding: '2px 8px' }}
-              onClick={() => {
-                setShowRadiusForm(false)
-                onClearNearby()
-              }}
-            >
-              ❌ Clear
-            </button>
+
+            {/* Expanded Popover Menu for Voyage Actions */}
+            {isVoyageMenuOpen && (
+              <div className={styles.voyagePopoverMenu}>
+                <div className={styles.voyagePopoverHeader}>
+                  Voyage Mode
+                </div>
+                <div className={styles.voyageSegmentGrid}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isVoyageOnlyView) toggleVoyageView()
+                    }}
+                    className={`${styles.voyageSegmentBtn} ${!isVoyageOnlyView ? styles.active : ''}`}
+                  >
+                    🌍 Show All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isVoyageOnlyView) toggleVoyageView()
+                    }}
+                    className={`${styles.voyageSegmentBtn} ${isVoyageOnlyView ? styles.active : ''}`}
+                  >
+                    🎯 Voyage Only
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  className={styles.itineraryActionBtn}
+                  onClick={() => {
+                    onToggleItinerary()
+                    setIsVoyageMenuOpen(false)
+                  }}
+                >
+                  📋 {isItineraryOpen ? 'Hide Itinerary' : 'View Itinerary Stops'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Filters */}
-        <div className={styles.filtersContainer}>
-          {categories.map((cat) => (
+        {/* Compact User Profile Menu Pill next to Voyage (Mobile Only) */}
+        {user ? (
+          <div className={`${styles.userBadgeWrapper} ${styles.mobileOnly}`} ref={userRef}>
             <button
-              key={cat.id}
-              className={`${styles.filterBtn} ${activeFilter === cat.id ? styles.active : ''}`}
-              onClick={() => setActiveFilter(cat.id)}
+              type="button"
+              className={styles.userBadgePill}
+              onClick={() => setIsUserMenuOpen(prev => !prev)}
+              title={user.email}
             >
-              <span>{cat.emoji}</span> {cat.label}
+              <span className={styles.userIcon}>👤</span>
+              <span className={styles.userNameText}>{getUserDisplayName()}</span>
+              <span className={styles.userChevron}>{isUserMenuOpen ? '▲' : '▼'}</span>
             </button>
-          ))}
-        </div>
+
+            {isUserMenuOpen && (
+              <div className={styles.userPopoverMenu}>
+                <Link
+                  to="/dashboard"
+                  className={styles.userPopoverItem}
+                  onClick={() => setIsUserMenuOpen(false)}
+                >
+                  🗺️ Voyages
+                </Link>
+                <Link
+                  to="/settings"
+                  className={styles.userPopoverItem}
+                  onClick={() => setIsUserMenuOpen(false)}
+                >
+                  ⚙️ Settings
+                </Link>
+                <div className={styles.userPopoverDivider}></div>
+                <button
+                  type="button"
+                  className={`${styles.userPopoverItem} ${styles.btnSignout}`}
+                  onClick={() => {
+                    setIsUserMenuOpen(false)
+                    handleSignOut()
+                  }}
+                >
+                  🚪 Log Out
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className={`${styles.authLinksGroup} ${styles.mobileOnly}`}>
+            <Link to="/login" className={styles.authLinkBtn}>Log In</Link>
+            <Link to="/signup" className={`${styles.authLinkBtn} ${styles.primary}`}>Sign Up</Link>
+          </div>
+        )}
       </div>
     </header>
   )
 }
-
