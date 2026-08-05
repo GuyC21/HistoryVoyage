@@ -7,9 +7,11 @@ import ZoomPrompt from '~/components/ZoomPrompt'
 import GeolocationHandler from '~/components/GeolocationHandler'
 import HeaderCard from '~/components/HeaderCard'
 import ItinerarySidebar from '~/components/ItinerarySidebar/ItinerarySidebar'
+import NavigationOverlay from '~/components/NavigationOverlay/NavigationOverlay'
 import { useDeepLink } from '~/hooks/useDeepLink'
 import { useSiteDetails } from '~/hooks/useSiteDetails'
 import { useMapData } from '~/hooks/useMapData'
+import { useActiveNavigation } from '~/hooks/useActiveNavigation'
 import { useVoyage } from '~/context/VoyageContext'
 import { useAuth } from '~/context/AuthContext'
 import { supabase } from '~/services/supabase'
@@ -32,20 +34,12 @@ const MIN_ZOOM_GATE = 7
  * 
  * The root container page/dashboard for the HistoryVoyage client application.
  * Manages Leaflet map state, user coordinates tracking, categories filtering,
- * and slides out the details drawer. Coordinates state sharing between:
- * - `HeaderCard` (Branding, filters, quick jump search bar)
- * - `MapView` (Leaflet tile layers, site markers, boundary outline overlays)
- * - `SiteDrawer` (Detailed historical descriptions, Wikipedia web views, road distance details)
- * - `ZoomPrompt` (Visual shield prompt to zoom in for performance/data-density gate)
- * - `GeolocationHandler` (Imperative locator targeting current device coords)
+ * Waze/Google Maps live active navigation focus mode, and slides out details drawer.
  * 
  * @returns {React.ReactElement} The dashboard layout view element.
  */
 export default function MapExplorer() {
-  /**
-   * @type {string|null} Bounding box CSV coordinates string ('west,south,east,north').
-   * Passed to useMapData hook to retrieve historical site nodes.
-   */
+  /** @type {string|null} Bounding box CSV coordinates string ('west,south,east,north'). */
   const [bounds, setBounds] = useState(null)
 
   /** @type {number} Current map zoom level. Governs whether markers render. */
@@ -58,13 +52,13 @@ export default function MapExplorer() {
   const [activeFilter, setActiveFilter] = useState('all')
   
   const { user } = useAuth()
-
+  
   /** @type {string} Current interface language ('en' for English translation, 'local'). */
   const [languageMode, setLanguageMode] = useState(() => {
-    return localStorage.getItem('app-language') || 'en'
+    return user?.user_metadata?.language_mode || 'en'
   })
 
-  // Sync languageMode state when user metadata is loaded
+  // Sync languageMode when user metadata resolves
   useEffect(() => {
     if (user?.user_metadata?.language_mode) {
       setLanguageMode(user.user_metadata.language_mode)
@@ -73,20 +67,17 @@ export default function MapExplorer() {
 
   const handleLanguageChange = async (newMode) => {
     setLanguageMode(newMode)
-    localStorage.setItem('app-language', newMode)
     if (user) {
       try {
         await supabase.auth.updateUser({
-          data: {
-            language_mode: newMode
-          }
+          data: { language_mode: newMode }
         })
       } catch (err) {
-        console.error('Failed to sync language preference to Supabase:', err)
+        console.error('Failed to save language preference to Supabase profile:', err)
       }
     }
   }
-  
+
   /** @type {Array<Array<number>>|null} Active site layout polygon coordinates. */
   const [activePolygon, setActivePolygon] = useState(null)
 
@@ -106,7 +97,6 @@ export default function MapExplorer() {
   const geoRef = useRef(null)
 
   // Custom Hooks for business logic
-  
   const { sites, loading, error } = useMapData(bounds, activeFilter)
   
   // Controls individual historical site details retrieval, images loading, and drawer slides
@@ -117,6 +107,41 @@ export default function MapExplorer() {
     handleSiteClick, 
     closeDrawer 
   } = useSiteDetails(mapInstance, setActivePolygon)
+
+  // Waze / Google Maps-style live active navigation hook
+  const {
+    isNavigating,
+    activeDestination,
+    routeData,
+    currentStep,
+    isFollowing,
+    isMuted,
+    travelMode,
+    startNavigation: startNavHook,
+    stopNavigation,
+    toggleFollowMode,
+    toggleMute,
+    toggleTravelMode
+  } = useActiveNavigation(userLocation, mapInstance, setToast)
+
+  // Handler to initiate live navigation focus mode from SiteDrawer
+  const handleStartNavigation = (site) => {
+    let startPos = userLocation
+
+    if (!startPos && mapInstance) {
+      const center = mapInstance.getCenter()
+      startPos = [center.lat, center.lng]
+      setToast('Starting navigation from map view center')
+    } else if (!startPos) {
+      setToast('Searching for GPS signal... Please allow location access.')
+      geoRef.current?.locate()
+      return
+    }
+
+    closeDrawer()
+    setIsItineraryOpen(false)
+    startNavHook(site, startPos)
+  }
 
   // Voyage context
   const { activeVoyage, isVoyageOnlyView, toggleVoyageView } = useVoyage()
@@ -175,42 +200,29 @@ export default function MapExplorer() {
     isFirstVoyageLoad.current = true
   }, [activeVoyage?.id])
 
-  // Automatically adjust map bounds to fit the focus country and all voyage stops
+  // Automatically adjust map bounds to fit all voyage stops
   useEffect(() => {
     if (!mapInstance || !activeVoyage) return
 
     const coords = []
-
-    // 1. Add focus city or focus country bounding box corners
-    if (activeVoyage.focusCityBbox) {
-      const [south, west, north, east] = activeVoyage.focusCityBbox
-      coords.push([south, west])
-      coords.push([north, east])
-    } else if (activeVoyage.focusCountry && activeVoyage.focusCountry.bbox) {
-      const [south, west, north, east] = activeVoyage.focusCountry.bbox
-      coords.push([south, west])
-      coords.push([north, east])
-    }
-
-    // 2. Add all stops coordinates
     const stops = activeVoyage.stops || []
+
     stops.forEach(stop => {
       const details = stop.siteDetails
-      if (details && details.coordinates) {
-        coords.push([details.coordinates[0], details.coordinates[1]]) // [lat, lng]
+      if (details?.coordinates) {
+        coords.push(details.coordinates) // [lat, lng]
       }
     })
 
     if (coords.length > 0) {
-      const bounds = L.latLngBounds(coords)
-      if (isFirstVoyageLoad.current) {
-        mapInstance.fitBounds(bounds, { padding: [50, 50], maxZoom: 12, animate: false })
-        isFirstVoyageLoad.current = false
+      try {
+        const bounds = L.latLngBounds(coords)
+        mapInstance.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 })
+      } catch (err) {
+        console.warn('Failed to fit map bounds for voyage:', err)
       }
     }
   }, [mapInstance, activeVoyage])
-
-
 
   /**
    * Zooms the map view into the threshold level MIN_ZOOM_GATE.
@@ -229,7 +241,6 @@ export default function MapExplorer() {
    */
   const handleQuickJump = (lat, lng) => {
     if (mapInstance) {
-      // Fly to the city center using Leaflet's default space-flight animation
       mapInstance.flyTo([lat, lng], 12, { animate: true })
     }
   }
@@ -275,34 +286,53 @@ export default function MapExplorer() {
 
   return (
     <div className="dashboard-container">
-      {/* Floating Header Card */}
-      <HeaderCard
-        languageMode={languageMode}
-        setLanguageMode={handleLanguageChange}
-        zoom={zoom}
-        minZoomGate={MIN_ZOOM_GATE}
-        visibleSitesCount={filteredSites.length}
-        activeFilter={activeFilter}
-        setActiveFilter={setActiveFilter}
-        categories={categories}
-        onQuickJump={handleQuickJump}
-        onLocateUser={() => geoRef.current?.locate()}
-        onSelectSite={handleSelectSite}
-        activeVoyage={activeVoyage}
-        isVoyageOnlyView={isVoyageOnlyView}
-        toggleVoyageView={toggleVoyageView}
-        isItineraryOpen={isItineraryOpen}
-        onToggleItinerary={() => setIsItineraryOpen(prev => !prev)}
-      />
+      {/* Distraction-Free Focus Mode Overlay when Live Navigation is Active */}
+      {isNavigating ? (
+        <NavigationOverlay
+          activeDestination={activeDestination}
+          routeData={routeData}
+          currentStep={currentStep}
+          isFollowing={isFollowing}
+          isMuted={isMuted}
+          travelMode={travelMode}
+          userLocation={userLocation}
+          onStopNavigation={stopNavigation}
+          onToggleFollow={toggleFollowMode}
+          onToggleMute={toggleMute}
+          onToggleTravelMode={toggleTravelMode}
+        />
+      ) : (
+        <>
+          {/* Floating Header Card */}
+          <HeaderCard
+            languageMode={languageMode}
+            setLanguageMode={handleLanguageChange}
+            zoom={zoom}
+            minZoomGate={MIN_ZOOM_GATE}
+            visibleSitesCount={filteredSites.length}
+            activeFilter={activeFilter}
+            setActiveFilter={setActiveFilter}
+            categories={categories}
+            onQuickJump={handleQuickJump}
+            onLocateUser={() => geoRef.current?.locate()}
+            onSelectSite={handleSelectSite}
+            activeVoyage={activeVoyage}
+            isVoyageOnlyView={isVoyageOnlyView}
+            toggleVoyageView={toggleVoyageView}
+            isItineraryOpen={isItineraryOpen}
+            onToggleItinerary={() => setIsItineraryOpen(prev => !prev)}
+          />
 
-      {/* Collapsible Itinerary Sidebar sliding from the left */}
-      <ItinerarySidebar
-        isOpen={isItineraryOpen}
-        onClose={() => setIsItineraryOpen(false)}
-        onToast={setToast}
-        mapInstance={mapInstance}
-        onSelectSite={handleSiteClick}
-      />
+          {/* Collapsible Itinerary Sidebar sliding from the left */}
+          <ItinerarySidebar
+            isOpen={isItineraryOpen}
+            onClose={() => setIsItineraryOpen(false)}
+            onToast={setToast}
+            mapInstance={mapInstance}
+            onSelectSite={handleSiteClick}
+          />
+        </>
+      )}
 
       {/* Map loading spinner */}
       {loading && (
@@ -330,95 +360,97 @@ export default function MapExplorer() {
           zoomControl={false}
           ref={setMapInstance}
         >
-          {/* Custom Controls (Locate Me & Zoom) */}
-          <div className="leaflet-bottom leaflet-right" style={{ marginBottom: '10px', marginRight: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {/* Locate Me button */}
-            <div className="leaflet-control leaflet-bar" style={{ border: 'none', boxShadow: 'var(--shadow-sm)', margin: 0 }}>
-              <a 
-                href="#" 
-                title="Locate Me" 
-                role="button" 
-                aria-label="Locate Me" 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  fontSize: '15px', 
-                  background: 'var(--bg-translucent)', 
-                  backdropFilter: 'blur(8px)', 
-                  border: '1px solid var(--border)', 
-                  borderRadius: '8px', 
-                  width: '34px', 
-                  height: '34px',
-                  color: 'var(--text-h)',
-                  cursor: 'pointer'
-                }}
-                onClick={(e) => { 
-                  e.preventDefault(); 
-                  geoRef.current?.locate(); 
-                }}
-              >
-                📍
-              </a>
-            </div>
+          {/* Custom Controls (Locate Me & Zoom) - Hidden in Focus Navigation Mode */}
+          {!isNavigating && (
+            <div className="leaflet-bottom leaflet-right" style={{ marginBottom: '10px', marginRight: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {/* Locate Me button */}
+              <div className="leaflet-control leaflet-bar" style={{ border: 'none', boxShadow: 'var(--shadow-sm)', margin: 0 }}>
+                <a 
+                  href="#" 
+                  title="Locate Me" 
+                  role="button" 
+                  aria-label="Locate Me" 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    fontSize: '15px', 
+                    background: 'var(--bg-translucent)', 
+                    backdropFilter: 'blur(8px)', 
+                    border: '1px solid var(--border)', 
+                    borderRadius: '8px', 
+                    width: '34px', 
+                    height: '34px',
+                    color: 'var(--text-h)',
+                    cursor: 'pointer'
+                  }}
+                  onClick={(e) => { 
+                    e.preventDefault(); 
+                    geoRef.current?.locate(); 
+                  }}
+                >
+                  📍
+                </a>
+              </div>
 
-            {/* Zoom Controls */}
-            <div className="leaflet-control leaflet-bar" style={{ border: 'none', boxShadow: 'var(--shadow-sm)', margin: 0 }}>
-              <a 
-                className="leaflet-control-zoom-in" 
-                href="#" 
-                title="Zoom in" 
-                role="button" 
-                aria-label="Zoom in" 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  background: 'var(--bg-translucent)', 
-                  backdropFilter: 'blur(8px)', 
-                  border: '1px solid var(--border)', 
-                  borderBottom: 'none', 
-                  borderRadius: '8px 8px 0 0', 
-                  width: '34px', 
-                  height: '34px',
-                  color: 'var(--text-h)',
-                  cursor: 'pointer'
-                }} 
-                onClick={(e) => { 
-                  e.preventDefault(); 
-                  if (mapInstance) mapInstance.zoomIn(); 
-                }}
-              >
-                +
-              </a>
-              <a 
-                className="leaflet-control-zoom-out" 
-                href="#" 
-                title="Zoom out" 
-                role="button" 
-                aria-label="Zoom out" 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  background: 'var(--bg-translucent)', 
-                  backdropFilter: 'blur(8px)', 
-                  border: '1px solid var(--border)', 
-                  borderRadius: '0 0 8px 8px', 
-                  width: '34px', 
-                  height: '34px',
-                  color: 'var(--text-h)',
-                  cursor: 'pointer'
-                }} 
-                onClick={(e) => { 
-                  e.preventDefault(); 
-                  if (mapInstance) mapInstance.zoomOut(); 
-                }}
-              >
-                -
-              </a>
+              {/* Zoom Controls */}
+              <div className="leaflet-control leaflet-bar" style={{ border: 'none', boxShadow: 'var(--shadow-sm)', margin: 0 }}>
+                <a 
+                  className="leaflet-control-zoom-in" 
+                  href="#" 
+                  title="Zoom in" 
+                  role="button" 
+                  aria-label="Zoom in" 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    background: 'var(--bg-translucent)', 
+                    backdropFilter: 'blur(8px)', 
+                    border: '1px solid var(--border)', 
+                    borderBottom: 'none', 
+                    borderRadius: '8px 8px 0 0', 
+                    width: '34px', 
+                    height: '34px',
+                    color: 'var(--text-h)',
+                    cursor: 'pointer'
+                  }} 
+                  onClick={(e) => { 
+                    e.preventDefault(); 
+                    if (mapInstance) mapInstance.zoomIn(); 
+                  }}
+                >
+                  +
+                </a>
+                <a 
+                  className="leaflet-control-zoom-out" 
+                  href="#" 
+                  title="Zoom out" 
+                  role="button" 
+                  aria-label="Zoom out" 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    background: 'var(--bg-translucent)', 
+                    backdropFilter: 'blur(8px)', 
+                    border: '1px solid var(--border)', 
+                    borderRadius: '0 0 8px 8px', 
+                    width: '34px', 
+                    height: '34px',
+                    color: 'var(--text-h)',
+                    cursor: 'pointer'
+                  }} 
+                  onClick={(e) => { 
+                    e.preventDefault(); 
+                    if (mapInstance) mapInstance.zoomOut(); 
+                  }}
+                >
+                  -
+                </a>
+              </div>
             </div>
-          </div>
+          )}
 
           <MapView
             sites={filteredSites}
@@ -430,6 +462,9 @@ export default function MapExplorer() {
             minZoomGate={MIN_ZOOM_GATE}
             activePolygon={activePolygon}
             isVoyageOnlyView={isVoyageOnlyView}
+            routeData={routeData}
+            activeDestination={activeDestination}
+            onUserDrag={() => isFollowing && toggleFollowMode()}
           />
 
           {/* Reusable geolocation logic component */}
@@ -452,22 +487,25 @@ export default function MapExplorer() {
       </main>
 
       {/* Zoom Gate Low Zoom Message */}
-      {zoom < MIN_ZOOM_GATE && (
+      {zoom < MIN_ZOOM_GATE && !isNavigating && (
         <ZoomPrompt onZoomClick={handleZoomInClick} />
       )}
 
-      {/* Slide-out details drawer */}
-      <SiteDrawer
-        site={selectedSite}
-        isOpen={isDrawerOpen}
-        onClose={closeDrawer}
-        isLoading={drawerLoading}
-        languageMode={languageMode}
-        setLanguageMode={handleLanguageChange}
-        userLocation={userLocation}
-        onToast={setToast}
-        onRefreshDetails={handleSiteClick}
-      />
+      {/* Slide-out details drawer - Hidden in Focus Navigation Mode */}
+      {!isNavigating && (
+        <SiteDrawer
+          site={selectedSite}
+          isOpen={isDrawerOpen}
+          onClose={closeDrawer}
+          isLoading={drawerLoading}
+          languageMode={languageMode}
+          setLanguageMode={handleLanguageChange}
+          userLocation={userLocation}
+          onToast={setToast}
+          onRefreshDetails={handleSiteClick}
+          onStartNavigation={handleStartNavigation}
+        />
+      )}
 
       {/* Floating toast notification */}
       {toast && (

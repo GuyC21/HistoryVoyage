@@ -98,6 +98,117 @@
   margin-top: 16px;
   margin-bottom: 12px;
   width: 100%;
+  padding-right: 48px; /* Generous clearance for absolute close button X */
+  box-sizing: border-box;
+}
+
+.actionButtonsRow {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.navigationRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.secondaryActionsRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.navBtnPrimary {
+  flex: 1.2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+  transition: transform 0.15s ease, background 0.15s ease;
+  white-space: nowrap;
+}
+
+.navBtnPrimary:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+}
+
+.navBtnWaze {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #0284c7;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 9px 10px;
+  border-radius: 10px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.navBtnWaze:hover {
+  background: rgba(56, 189, 248, 0.22);
+  border-color: rgba(56, 189, 248, 0.5);
+  transform: translateY(-1px);
+}
+
+.wazeDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #38bdf8;
+  display: inline-block;
+}
+
+.navBtnGoogle {
+  flex: 1.1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #059669;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 9px 10px;
+  border-radius: 10px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.navBtnGoogle:hover {
+  background: rgba(16, 185, 129, 0.22);
+  border-color: rgba(16, 185, 129, 0.5);
+  transform: translateY(-1px);
+}
+
+.googleDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  display: inline-block;
 }
 
 .drawerTag {
@@ -403,14 +514,28 @@
 /* Universal Symmetrical Button Layout */
 .actionButtonsRow {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 10px;
   margin-top: 8px;
   margin-bottom: 24px;
   width: 100%;
-  align-items: center;
 }
 
-.actionButtonsRow > * {
+.navigationRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.secondaryActionsRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.secondaryActionsRow > * {
   flex: 1 !important;
   width: 100% !important;
   height: 44px !important;
@@ -436,7 +561,7 @@
     border-radius: 20px 20px 0 0;
     transform: translateY(100%);
     box-sizing: border-box;
-    padding: 0 16px 16px 16px; /* No top padding to allow image bleed */
+    padding: 0 16px 24px 16px; /* 24px bottom padding for comfortable button clearance */
     background: var(--bg); /* Solid background to hide map controls */
     z-index: 1010; /* Above Leaflet controls */
     overflow: hidden; /* For smooth height transition */
@@ -444,7 +569,8 @@
   }
 
   .siteDrawer.collapsed {
-    height: 220px;
+    height: auto;
+    max-height: 340px;
   }
 
   .siteDrawer.open {
@@ -477,45 +603,43 @@
   .siteDrawer.hasImage.collapsed .drawerScrollContainer {
     display: grid;
     grid-template-areas: 
-      "header lang"
+      "topactions topactions"
       "header image"
-      "actions tag";
-    grid-template-columns: 1fr 120px;
-    grid-template-rows: auto 85px auto;
-    gap: 12px;
+      "actions actions";
+    grid-template-columns: 1fr 100px;
+    grid-template-rows: auto auto auto;
+    gap: 8px;
     overflow-y: hidden;
-    align-content: center;
   }
 
   .siteDrawer.noImage.collapsed .drawerScrollContainer {
     display: grid;
     grid-template-areas: 
+      "topactions"
       "header"
-      "lang"
-      "tag"
       "actions";
     grid-template-columns: 1fr;
-    gap: 12px;
+    gap: 8px;
     overflow-y: hidden;
-    align-content: center;
   }
 
   .siteDrawer.collapsed .drawerTopActions {
-    display: contents;
+    display: flex;
+    grid-area: topactions;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 18px;
+    margin-bottom: 4px;
+    padding-right: 48px; /* Generous clearance for absolute close button X */
+    box-sizing: border-box;
   }
 
   .siteDrawer.collapsed .drawerLanguageSelector {
-    grid-area: lang;
     align-self: center;
-    justify-self: center;
   }
 
   .siteDrawer.collapsed .drawerTag {
-    grid-area: tag;
     margin: 0;
-    align-self: start;
-    justify-self: center;
-    margin-top: 4px; /* Slight visual adjustment to match button text baseline */
   }
 
   .siteDrawer.collapsed .drawerHeader {
@@ -549,9 +673,9 @@
   .siteDrawer.collapsed .drawerImageContainer,
   .siteDrawer.collapsed .skeletonImage {
     grid-area: image;
-    height: 85px;
-    width: 120px;
-    min-height: 85px;
+    height: 75px;
+    width: 95px;
+    min-height: 75px;
     margin: 0;
     border-radius: 12px;
     align-self: center;
@@ -559,9 +683,9 @@
 
   .siteDrawer.collapsed .actionButtonsRow {
     grid-area: actions;
-    margin-top: 0;
+    margin-top: 4px;
     margin-bottom: 0;
-    align-self: start;
+    width: 100%;
   }
 
   .dragHandleContainer {
@@ -618,4 +742,62 @@
     display: none;
   }
 }
+
+.navSection {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.startNavBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  border: none;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 12px 18px;
+  border-radius: 12px;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.startNavBtn:hover {
+  transform: translateY(-1px);
+  opacity: 0.95;
+}
+
+.externalNavRow {
+  display: flex;
+  gap: 8px;
+}
+
+.externalAppBtn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-h);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 10px;
+  transition: background 0.15s ease;
+}
+
+.externalAppBtn:hover {
+  background: var(--bg-translucent);
+}
+
 

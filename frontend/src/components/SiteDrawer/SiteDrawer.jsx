@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { getRoadDistance, formatDistance } from '~/utils/distance'
+import { getExternalNavLinks } from '~/services/routingService'
 import { useVoyage } from '~/context/VoyageContext'
 import { useAuth } from '~/context/AuthContext'
 import { supabase } from '~/services/supabase'
@@ -20,6 +21,7 @@ import styles from './SiteDrawer.module.css'
  * @param {string} props.languageMode - Interface language preference ('en' or 'local').
  * @param {Function} props.setLanguageMode - Callback to update the language preference.
  * @param {Array|Object|null} props.userLocation - User's current location [lat, lng].
+ * @param {Function} [props.onStartNavigation] - Callback to initiate active navigation.
  */
 export default function SiteDrawer({ 
   site, 
@@ -30,7 +32,8 @@ export default function SiteDrawer({
   setLanguageMode,
   userLocation,
   onToast,
-  onRefreshDetails
+  onRefreshDetails,
+  onStartNavigation
 }) {
   const { user, djangoUser } = useAuth()
 
@@ -430,7 +433,7 @@ export default function SiteDrawer({
                 )}
                 
                 {distanceData && (
-                  <div className={styles.drawerDistanceWrapper} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', padding: '6px 8px', backgroundColor: 'var(--bg)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                  <div className={styles.drawerDistanceWrapper} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginTop: '6px', padding: '6px 8px', backgroundColor: 'var(--bg)', borderRadius: '6px', border: '1px solid var(--border)' }}>
                     <span style={{ fontSize: '0.9em', fontWeight: '500' }} title={distanceData.isAir ? "Straight-line air distance" : "Driving distance by roads"}>
                       {distanceData.isAir ? '✈️' : '🚗'} {formatDistance(distanceData.distance, distanceUnit)}
                       {distanceData.isAir && <span style={{ opacity: 0.6, fontSize: '0.85em', marginLeft: '4px', fontWeight: 'normal' }}>(air distance)</span>}
@@ -451,6 +454,55 @@ export default function SiteDrawer({
           <div className={styles.drawerDivider}></div>
 
           <div className={styles.actionButtonsRow}>
+            {/* Full-Width Dedicated Navigation Bar */}
+            {site && (site.coordinates || site.geometry?.coordinates) && (
+              <div className={styles.navigationRow}>
+                <button
+                  className={styles.navBtnPrimary}
+                  onClick={() => onStartNavigation && onStartNavigation(site)}
+                  title="Start In-App Live Navigation"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ transform: 'rotate(45deg)' }}>
+                    <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71L12 2z"/>
+                  </svg>
+                  <span>Directions</span>
+                </button>
+
+                <a
+                  href={getExternalNavLinks(
+                    site.coordinates ? site.coordinates[0] : site.geometry.coordinates[1],
+                    site.coordinates ? site.coordinates[1] : site.geometry.coordinates[0],
+                    userLocation ? (Array.isArray(userLocation) ? userLocation[0] : userLocation.lat) : null,
+                    userLocation ? (Array.isArray(userLocation) ? userLocation[1] : userLocation.lng) : null
+                  ).waze}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.navBtnWaze}
+                  title="Open in Waze App"
+                >
+                  <span className={styles.wazeDot}></span>
+                  <span>Waze</span>
+                </a>
+
+                <a
+                  href={getExternalNavLinks(
+                    site.coordinates ? site.coordinates[0] : site.geometry.coordinates[1],
+                    site.coordinates ? site.coordinates[1] : site.geometry.coordinates[0],
+                    userLocation ? (Array.isArray(userLocation) ? userLocation[0] : userLocation.lat) : null,
+                    userLocation ? (Array.isArray(userLocation) ? userLocation[1] : userLocation.lng) : null
+                  ).googleMaps}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.navBtnGoogle}
+                  title="Open in Google Maps App"
+                >
+                  <span className={styles.googleDot}></span>
+                  <span>Google Maps</span>
+                </a>
+              </div>
+            )}
+
+            <div className={styles.secondaryActionsRow}>
             {(() => {
               const wikiUrl = languageMode === 'en' 
                 ? (site.wikiUrlEn || site.wikiUrlLocal) 
@@ -539,6 +591,7 @@ export default function SiteDrawer({
                 </button>
               )
             })()}
+            </div>
           </div>
 
           <h3 className={styles.sectionTitle}>Overview</h3>
@@ -549,9 +602,6 @@ export default function SiteDrawer({
                   ? 'No English description available for this historical site. You can explore more about it on Wikidata or search for its historical context in the region.'
                   : 'אין תיאור זמין או non è disponibile alcuna descrizione per questo sito storico.'
               )
-              const limit = site.imageUrl ? 60 : 140
-              const isDescriptionLong = activeDescription.length > limit
-
               return <p>{activeDescription}</p>
             })()}
           </div>
