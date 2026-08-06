@@ -1,34 +1,7 @@
 import React from 'react'
 import { formatDistance } from '~/utils/distance'
-import { getExternalNavLinks } from '~/services/routingService'
+import { getExternalNavLinks, getManeuverIcon, formatManeuverInstruction } from '~/services/routingService'
 import styles from './NavigationOverlay.module.css'
-
-/**
- * Helper to map OSRM maneuver types/modifiers to visual direction emojis & icons.
- *
- * @param {Object|null} maneuver - OSRM maneuver object
- * @returns {string} Emoji representation of maneuver direction
- */
-const getManeuverIcon = (maneuver) => {
-  if (!maneuver) return '⬆️'
-  const type = maneuver.type || ''
-  const modifier = maneuver.modifier || ''
-
-  if (type === 'arrive') return '🏁'
-  if (type === 'roundabout' || type === 'rotary') return '🔄'
-
-  if (modifier.includes('right')) {
-    return modifier.includes('sharp') ? '↗️' : '↱'
-  }
-  if (modifier.includes('left')) {
-    return modifier.includes('sharp') ? '↖️' : '↰'
-  }
-  if (modifier.includes('slight right')) return '↗️'
-  if (modifier.includes('slight left')) return '↖️'
-  if (modifier.includes('u-turn')) return '↩️'
-
-  return '⬆️'
-}
 
 /**
  * Formats duration in seconds to human-readable format (e.g., "14 min" or "1 hr 12 min").
@@ -62,7 +35,7 @@ const calculateEtaClock = (durationSeconds) => {
 /**
  * NavigationOverlay Component
  * Renders the Waze/Google Maps-style distraction-free Focus Mode interface:
- * - Top Turn Banner: Visual maneuver direction icon, step distance, and instruction text.
+ * - Top Turn Banner: Visual maneuver direction icon, real-time step distance, and instruction text.
  * - Bottom Navigation Card: Total remaining distance, ETA clock, external app links (Waze / Google Maps),
  *   audio mute toggle, camera follow toggle, and exit navigation button.
  *
@@ -70,6 +43,8 @@ const calculateEtaClock = (durationSeconds) => {
  * @param {Object} props.activeDestination - Target site metadata { name, lat, lng }
  * @param {Object|null} props.routeData - Resolved route details { distance, duration, steps }
  * @param {Object|null} props.currentStep - Active maneuver step object
+ * @param {Object|null} props.upcomingStep - Upcoming maneuver step object
+ * @param {number|null} props.distToNextTurn - Real-time distance in meters to upcoming turn
  * @param {boolean} props.isFollowing - True if map camera is locked to user
  * @param {boolean} props.isMuted - True if voice guidance is muted
  * @param {Array<number>|null} props.userLocation - Current user coordinates [lat, lng]
@@ -81,6 +56,8 @@ export default function NavigationOverlay({
   activeDestination,
   routeData,
   currentStep,
+  upcomingStep,
+  distToNextTurn,
   isFollowing,
   isMuted,
   travelMode = 'driving',
@@ -92,10 +69,19 @@ export default function NavigationOverlay({
 }) {
   if (!activeDestination) return null
 
-  const maneuver = currentStep?.maneuver
+  // Target step to render on banner is the UPCOMING maneuver (or current step if final arrival)
+  const targetStep = upcomingStep || currentStep
+  const maneuver = targetStep?.maneuver
   const maneuverIcon = getManeuverIcon(maneuver)
-  const instructionText = maneuver?.instruction || currentStep?.name || `Proceed to ${activeDestination.name}`
-  const stepDistance = currentStep?.distance ? formatDistance(currentStep.distance, 'km') : ''
+
+  const rawInstruction = targetStep ? formatManeuverInstruction(targetStep) : `Proceed to ${activeDestination.name}`
+  // Capitalize first letter cleanly for banner display
+  const instructionText = rawInstruction.charAt(0).toUpperCase() + rawInstruction.slice(1)
+
+  // Real-time decreasing distance to upcoming turn
+  const stepDistance = (distToNextTurn !== null && distToNextTurn !== undefined)
+    ? formatDistance(distToNextTurn, 'km')
+    : (currentStep?.distance ? formatDistance(currentStep.distance, 'km') : '')
 
   const userLat = userLocation?.[0]
   const userLng = userLocation?.[1]
@@ -114,7 +100,7 @@ export default function NavigationOverlay({
         </div>
         <div className={styles.instructionDetails}>
           {stepDistance && <div className={styles.stepDistance}>{stepDistance}</div>}
-          <div className={styles.instructionText}>{instructionText}</div>
+          <div className={styles.instructionText} dir="auto"><bdi>{instructionText}</bdi></div>
         </div>
       </div>
 

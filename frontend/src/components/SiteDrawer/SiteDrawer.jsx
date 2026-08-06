@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { getRoadDistance, formatDistance } from '~/utils/distance'
+import { formatDistance } from '~/utils/distance'
 import { getExternalNavLinks } from '~/services/routingService'
 import { useVoyage } from '~/context/VoyageContext'
 import { useAuth } from '~/context/AuthContext'
-import { supabase } from '~/services/supabase'
-import { backendApi } from '~/services/api'
+import { useWikidataEditor } from '~/hooks/useWikidataEditor'
+import { useSiteDistance } from '~/hooks/useSiteDistance'
 import styles from './SiteDrawer.module.css'
 
 /**
@@ -37,10 +37,22 @@ export default function SiteDrawer({
 }) {
   const { user, djangoUser } = useAuth()
 
-  // State for Wikidata inline editor
-  const [isEditingWikidata, setIsEditingWikidata] = useState(false)
-  const [editWikidataVal, setEditWikidataVal] = useState('')
-  const [updatingWikidata, setUpdatingWikidata] = useState(false)
+  // Custom hook for Wikidata inline editor
+  const {
+    isEditingWikidata,
+    editWikidataVal,
+    setEditWikidataVal,
+    updatingWikidata,
+    handleSaveWikidata
+  } = useWikidataEditor(site, onToast, onRefreshDetails)
+
+  // Custom hook for distance calculations and unit settings
+  const {
+    distanceData,
+    distanceUnit,
+    handleDistanceUnitChange
+  } = useSiteDistance(site, userLocation, isOpen, user)
+
   // Mobile drawer state
   const [isExpanded, setIsExpanded] = useState(false)
   const touchStartY = useRef(null)
@@ -55,142 +67,10 @@ export default function SiteDrawer({
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // Sync edit input value when selected site changes
-  useEffect(() => {
-    if (site) {
-      setEditWikidataVal(site.wikidata || '')
-    }
-    setIsEditingWikidata(false)
-  }, [site])
-
-  const handleSaveWikidata = async () => {
-    if (!site) return
-
-    let cleanVal = editWikidataVal.trim()
-    if (cleanVal) {
-      if (!cleanVal.toUpperCase().startsWith('Q') || !/^\d+$/.test(cleanVal.slice(1))) {
-        if (onToast) {
-          onToast('Invalid Wikidata ID. Must start with Q followed by numbers.', 'error')
-        } else {
-          alert('Invalid Wikidata ID. Must start with Q followed by numbers.')
-        }
-        return
-      }
-      cleanVal = cleanVal.toUpperCase()
-    } else {
-      cleanVal = null
-    }
-
-    setUpdatingWikidata(true)
-    try {
-      await backendApi.updateSiteWikidata(site.id, cleanVal)
-      if (onToast) {
-        onToast('Wikidata ID updated successfully!', 'success')
-      }
-      setIsEditingWikidata(false)
-
-      if (onRefreshDetails) {
-        onRefreshDetails({
-          ...site,
-          wikidata: cleanVal,
-          englishName: null,
-          englishDescription: null
-        })
-      }
-    } catch (err) {
-      console.error(err)
-      if (onToast) {
-        onToast(err.message || 'Failed to update Wikidata ID', 'error')
-      }
-    } finally {
-      setUpdatingWikidata(false)
-    }
-  }
-
-  /** @type {string} Unit selection: 'km' (kilometers) or 'mi' (miles). */
-  const [distanceUnit, setDistanceUnit] = useState(() => {
-    return localStorage.getItem('app-distance-unit') || 'km'
-  })
-
-  // Sync distanceUnit state when user metadata is loaded
-  useEffect(() => {
-    if (user?.user_metadata?.distance_unit) {
-      setDistanceUnit(user.user_metadata.distance_unit)
-    }
-  }, [user])
-
-  const handleDistanceUnitChange = async (newUnit) => {
-    setDistanceUnit(newUnit)
-    localStorage.setItem('app-distance-unit', newUnit)
-    if (user) {
-      try {
-        await supabase.auth.updateUser({
-          data: {
-            distance_unit: newUnit
-          }
-        })
-      } catch (err) {
-        console.error('Failed to sync distance unit to Supabase:', err)
-      }
-    }
-  }
-
-  /**
-   * @type {Object|null} Resolved driving/air distance details.
-   * Format: { distance: number, isAir: boolean }.
-   */
-  const [distanceData, setDistanceData] = useState(null)
-
   const { activeVoyage, addSiteToVoyage, removeSiteFromVoyage } = useVoyage()
   const [isAdding, setIsAdding] = useState(false)
   const [isRemoving, setIsRemoving] = useState(false)
 
-  /** @type {React.MutableRefObject<AbortController|null>} Ref tracking OSRM driving distance fetch operations. */
-  const distanceAbortRef = useRef(null)
-
-  useEffect(() => {
-    if (distanceAbortRef.current) {
-      distanceAbortRef.current.abort()
-    }
-    
-    if (!isOpen) {
-      setDistanceData(null)
-      return
-    }
-
-    if (!site || !site.coordinates || !userLocation) {
-      setDistanceData(null)
-      return
-    }
-
-    const fetchDistance = async () => {
-      const controller = new AbortController()
-      distanceAbortRef.current = controller
-
-      try {
-        const [siteLat, siteLng] = site.coordinates
-        // userLocation might be an array or an object from Leaflet
-        const userLat = Array.isArray(userLocation) ? userLocation[0] : userLocation.lat
-        const userLng = Array.isArray(userLocation) ? userLocation[1] : userLocation.lng
-        
-        const data = await getRoadDistance(userLat, userLng, siteLat, siteLng, controller.signal)
-        setDistanceData(data)
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          console.error('Distance calculation failed:', err)
-          setDistanceData(null)
-        }
-      }
-    }
-
-    fetchDistance()
-
-    return () => {
-      if (distanceAbortRef.current) {
-        distanceAbortRef.current.abort()
-      }
-    }
-  }, [site, userLocation, isOpen])
 
 
 

@@ -12,7 +12,7 @@ from django.conf import settings
 
 from .models import HistoricalSite, Country
 from .serializers import HistoricalSiteListSerializer, HistoricalSiteDetailSerializer, CountrySerializer
-from .services import translate_site_details, resolve_site_address
+from .services import translate_site_details, resolve_site_address, update_site_wikidata
 from .selectors import get_sites_in_bbox, search_sites_by_text
 
 class CountryViewSet(viewsets.ReadOnlyModelViewSet):
@@ -113,26 +113,16 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
     def update_wikidata(self, request, pk=None):
         """
         Updates the wikidata identifier of a site. Restrained to Django staff admin accounts.
+        Delegates validation and database update logic to the services layer.
         """
         instance = self.get_object()
         wikidata_id = request.data.get('wikidata')
 
-        if wikidata_id:
-            wikidata_id = wikidata_id.strip()
-            if not wikidata_id.startswith('Q') or not wikidata_id[1:].isdigit():
-                return Response(
-                    {"detail": "Invalid Wikidata ID format. Must start with 'Q' followed by digits (e.g. Q186326)."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        else:
-            wikidata_id = None
-
-        if instance.wikidata != wikidata_id:
-            instance.wikidata = wikidata_id
-            # Reset English translations so they are re-resolved from the new Wikidata node
-            instance.english_name = None
-            instance.english_description = None
-            instance.save(update_fields=['wikidata', 'english_name', 'english_description'])
+        try:
+            instance = update_site_wikidata(instance, wikidata_id)
+        except ValueError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = self.get_serializer(instance)
         return Response(serializer.data, status=status.HTTP_200_OK)
+

@@ -12,6 +12,8 @@ import { useDeepLink } from '~/hooks/useDeepLink'
 import { useSiteDetails } from '~/hooks/useSiteDetails'
 import { useMapData } from '~/hooks/useMapData'
 import { useActiveNavigation } from '~/hooks/useActiveNavigation'
+import { useFilteredSites } from '~/hooks/useFilteredSites'
+import { useVoyageMapBounds } from '~/hooks/useVoyageMapBounds'
 import { useVoyage } from '~/context/VoyageContext'
 import { useAuth } from '~/context/AuthContext'
 import { supabase } from '~/services/supabase'
@@ -44,9 +46,6 @@ export default function MapExplorer() {
 
   /** @type {number} Current map zoom level. Governs whether markers render. */
   const [zoom, setZoom] = useState(7)
-
-  /** @type {Array<Object>} List of historical site features filtered by active category type. */
-  const [filteredSites, setFilteredSites] = useState([])
   
   /** @type {string} Selected category type ID (e.g. 'castle', 'ruins', 'all'). */
   const [activeFilter, setActiveFilter] = useState('all')
@@ -114,6 +113,8 @@ export default function MapExplorer() {
     activeDestination,
     routeData,
     currentStep,
+    upcomingStep,
+    distToNextTurn,
     isFollowing,
     isMuted,
     travelMode,
@@ -146,6 +147,12 @@ export default function MapExplorer() {
   // Voyage context
   const { activeVoyage, isVoyageOnlyView, toggleVoyageView } = useVoyage()
 
+  // Custom hook for site filtering & voyage stop mapping
+  const filteredSites = useFilteredSites(sites, activeFilter, isVoyageOnlyView, activeVoyage)
+
+  // Custom hook for auto-fitting map bounds when loading an active voyage
+  useVoyageMapBounds(mapInstance, activeVoyage)
+
   // Resolves direct links containing ?site=<id> URL search parameters
   useDeepLink(mapInstance, handleSiteClick)
 
@@ -157,73 +164,6 @@ export default function MapExplorer() {
     }
   }, [toast])
 
-  // Filter sites when sites data, activeFilter, or voyage toggle changes
-  useEffect(() => {
-    let filtered = sites
-
-    // 1. Filter by category
-    if (activeFilter === 'relation') {
-      filtered = filtered.filter((site) => site.properties?.osmType === 'relation')
-    } else if (activeFilter !== 'all') {
-      filtered = filtered.filter((site) => site.properties?.site_type === activeFilter)
-    }
-
-    // 2. Filter by Voyage if active
-    if (isVoyageOnlyView && activeVoyage) {
-      filtered = (activeVoyage.stops || []).map(stop => {
-        const details = stop.siteDetails
-        if (!details || !details.coordinates) return null
-        return {
-          id: details.id,
-          geometry: {
-            type: 'Point',
-            coordinates: [details.coordinates[1], details.coordinates[0]] // [lng, lat]
-          },
-          properties: {
-            name: details.name,
-            englishName: details.englishName,
-            site_type: details.siteType,
-            wikidata: details.wikidata,
-            country: details.country,
-            osmType: 'node'
-          }
-        }
-      }).filter(Boolean)
-    }
-
-    setFilteredSites(filtered)
-  }, [sites, activeFilter, isVoyageOnlyView, activeVoyage])
-
-  const isFirstVoyageLoad = useRef(true)
-
-  useEffect(() => {
-    isFirstVoyageLoad.current = true
-  }, [activeVoyage?.id])
-
-  // Automatically adjust map bounds to fit all voyage stops
-  useEffect(() => {
-    if (!mapInstance || !activeVoyage) return
-
-    const coords = []
-    const stops = activeVoyage.stops || []
-
-    stops.forEach(stop => {
-      const details = stop.siteDetails
-      if (details?.coordinates) {
-        coords.push(details.coordinates) // [lat, lng]
-      }
-    })
-
-    if (coords.length > 0) {
-      try {
-        const bounds = L.latLngBounds(coords)
-        mapInstance.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 })
-      } catch (err) {
-        console.warn('Failed to fit map bounds for voyage:', err)
-      }
-    }
-  }, [mapInstance, activeVoyage])
-
   /**
    * Zooms the map view into the threshold level MIN_ZOOM_GATE.
    */
@@ -232,6 +172,8 @@ export default function MapExplorer() {
       mapInstance.setZoom(MIN_ZOOM_GATE)
     }
   }
+
+
 
   /**
    * Centers the viewport over specific coordinates.
@@ -292,6 +234,8 @@ export default function MapExplorer() {
           activeDestination={activeDestination}
           routeData={routeData}
           currentStep={currentStep}
+          upcomingStep={upcomingStep}
+          distToNextTurn={distToNextTurn}
           isFollowing={isFollowing}
           isMuted={isMuted}
           travelMode={travelMode}
