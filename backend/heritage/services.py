@@ -81,3 +81,35 @@ def resolve_site_address(site: HistoricalSite) -> HistoricalSite:
         logger.error(f"Failed to resolve address for site {site.id}: {e}")
         
     return site
+
+def update_site_wikidata(site: HistoricalSite, wikidata_id: str | None) -> HistoricalSite:
+    """
+    Updates the wikidata identifier of a historical site and resets cached English texts.
+
+    Args:
+        site (HistoricalSite): Target site model instance.
+        wikidata_id (str|None): Sanitized Wikidata Q-ID string or None.
+
+    Returns:
+        HistoricalSite: Updated site instance.
+
+    Raises:
+        ValueError: If wikidata_id format is invalid.
+    """
+    if wikidata_id:
+        clean_val = wikidata_id.strip().upper()
+        if not clean_val.startswith('Q') or not clean_val[1:].isdigit():
+            raise ValueError("Invalid Wikidata ID format. Must start with 'Q' followed by digits (e.g. Q186326).")
+        wikidata_id = clean_val
+    else:
+        wikidata_id = None
+
+    if site.wikidata != wikidata_id:
+        site.wikidata = wikidata_id
+        # Reset English translations so they are re-resolved from the new Wikidata node
+        site.english_name = None
+        site.english_description = None
+        site.save(update_fields=['wikidata', 'english_name', 'english_description'])
+
+    return site
+

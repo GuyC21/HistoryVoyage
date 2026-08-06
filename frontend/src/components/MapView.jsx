@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
-import { TileLayer, Marker, Polygon, useMapEvents } from 'react-leaflet'
+import { TileLayer, Marker, Polygon, Polyline, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 
 const iconCache = {}
@@ -47,6 +47,16 @@ const getMarkerIcon = (siteType, isSelected, hasBoundary) => {
   return icon
 }
 
+// Destination flag pin icon for live active navigation
+const destinationIcon = L.divIcon({
+  html: `<div class="custom-pin selected" style="--marker-color: #ef4444">
+           <span class="pin-icon">🏁</span>
+         </div>`,
+  className: 'custom-pin-wrapper',
+  iconSize: [36, 36],
+  iconAnchor: [18, 36]
+})
+
 /**
  * MapEventsHandler Subcomponent
  * Listens to Leaflet viewport move/zoom events, debounces query bounding-box changes,
@@ -56,11 +66,15 @@ const getMarkerIcon = (siteType, isSelected, hasBoundary) => {
  * @param {Function} props.onBoundsChange - Callback with string bounding-box: "west,south,east,north" | null.
  * @param {Function} props.onZoomChange - Callback with current zoom number.
  * @param {number} props.minZoomGate - Minimum zoom gate under which database querying is disabled.
+ * @param {Function} [props.onUserDrag] - Callback triggered when user manually pans/drags the map.
  */
-function MapEventsHandler({ onBoundsChange, onZoomChange, minZoomGate }) {
+function MapEventsHandler({ onBoundsChange, onZoomChange, minZoomGate, onUserDrag }) {
   const debounceTimer = useRef(null)
 
   const map = useMapEvents({
+    dragstart: () => {
+      if (onUserDrag) onUserDrag()
+    },
     moveend: () => {
       handleMapChange()
     },
@@ -147,7 +161,7 @@ const SiteMarker = React.memo(({ site, isSelected, hasBoundary, onSiteClick }) =
 
 /**
  * MapView Component
- * Renders the reactive Leaflet layers (basemap tile layers, dynamic markers, OS dark theme handlers, and viewport bounds).
+ * Renders reactive Leaflet layers (basemap tile layers, dynamic markers, navigation polylines, and viewport bounds).
  *
  * @param {Object} props
  * @param {Array<Object>} props.sites - List of GeoJSON historical sites to map.
@@ -158,6 +172,10 @@ const SiteMarker = React.memo(({ site, isSelected, hasBoundary, onSiteClick }) =
  * @param {number} props.currentZoom - Current map viewport zoom level.
  * @param {number} props.minZoomGate - Zoom limit gate beneath which markers are hidden.
  * @param {Array|null} props.activePolygon - Selected site boundary polygon paths to render.
+ * @param {boolean} props.isVoyageOnlyView - True if filtering strictly by active voyage stops.
+ * @param {Object|null} [props.routeData] - Active OSRM route details containing polyline coordinates.
+ * @param {Object|null} [props.activeDestination] - Active navigation target site { lat, lng }.
+ * @param {Function} [props.onUserDrag] - Callback triggered when user manually drags map during navigation.
  */
 export default function MapView({ 
   sites, 
@@ -168,7 +186,10 @@ export default function MapView({
   currentZoom, 
   minZoomGate,
   activePolygon,
-  isVoyageOnlyView
+  isVoyageOnlyView,
+  routeData,
+  activeDestination,
+  onUserDrag
 }) {
   /**
    * @type {boolean} Sensing system color scheme.
@@ -217,6 +238,40 @@ export default function MapView({
         className={isDarkMode ? 'dark-map-filter' : ''}
       />
 
+      {/* Active Navigation Glowing Route Line */}
+      {routeData?.coordinates && routeData.coordinates.length > 0 && (
+        <>
+          <Polyline
+            positions={routeData.coordinates}
+            pathOptions={{
+              color: '#2563eb', // Royal Blue
+              weight: 7,
+              opacity: 0.85,
+              lineCap: 'round',
+              lineJoin: 'round'
+            }}
+          />
+          <Polyline
+            positions={routeData.coordinates}
+            pathOptions={{
+              color: '#60a5fa', // Light Blue Inner Core Glow
+              weight: 3,
+              opacity: 0.95,
+              lineCap: 'round',
+              lineJoin: 'round'
+            }}
+          />
+        </>
+      )}
+
+      {/* Active Destination Finish Flag Marker */}
+      {activeDestination && (
+        <Marker
+          position={[activeDestination.lat, activeDestination.lng]}
+          icon={destinationIcon}
+        />
+      )}
+
       {activePolygon && (
         <Polygon
           positions={activePolygon}
@@ -237,6 +292,7 @@ export default function MapView({
         onBoundsChange={onBoundsChange} 
         onZoomChange={onZoomChange} 
         minZoomGate={minZoomGate} 
+        onUserDrag={onUserDrag}
       />
 
       {(currentZoom >= minZoomGate || isVoyageOnlyView) && sites.map((site) => {

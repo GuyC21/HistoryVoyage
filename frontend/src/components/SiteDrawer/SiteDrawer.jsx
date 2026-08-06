@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { getRoadDistance, formatDistance } from '~/utils/distance'
+import { formatDistance } from '~/utils/distance'
+import { getExternalNavLinks } from '~/services/routingService'
 import { useVoyage } from '~/context/VoyageContext'
 import { useAuth } from '~/context/AuthContext'
-import { supabase } from '~/services/supabase'
-import { backendApi } from '~/services/api'
+import { useWikidataEditor } from '~/hooks/useWikidataEditor'
+import { useSiteDistance } from '~/hooks/useSiteDistance'
 import styles from './SiteDrawer.module.css'
 
 /**
@@ -20,6 +21,7 @@ import styles from './SiteDrawer.module.css'
  * @param {string} props.languageMode - Interface language preference ('en' or 'local').
  * @param {Function} props.setLanguageMode - Callback to update the language preference.
  * @param {Array|Object|null} props.userLocation - User's current location [lat, lng].
+ * @param {Function} [props.onStartNavigation] - Callback to initiate active navigation.
  */
 export default function SiteDrawer({ 
   site, 
@@ -30,14 +32,27 @@ export default function SiteDrawer({
   setLanguageMode,
   userLocation,
   onToast,
-  onRefreshDetails
+  onRefreshDetails,
+  onStartNavigation
 }) {
   const { user, djangoUser } = useAuth()
 
-  // State for Wikidata inline editor
-  const [isEditingWikidata, setIsEditingWikidata] = useState(false)
-  const [editWikidataVal, setEditWikidataVal] = useState('')
-  const [updatingWikidata, setUpdatingWikidata] = useState(false)
+  // Custom hook for Wikidata inline editor
+  const {
+    isEditingWikidata,
+    editWikidataVal,
+    setEditWikidataVal,
+    updatingWikidata,
+    handleSaveWikidata
+  } = useWikidataEditor(site, onToast, onRefreshDetails)
+
+  // Custom hook for distance calculations and unit settings
+  const {
+    distanceData,
+    distanceUnit,
+    handleDistanceUnitChange
+  } = useSiteDistance(site, userLocation, isOpen, user)
+
   // Mobile drawer state
   const [isExpanded, setIsExpanded] = useState(false)
   const touchStartY = useRef(null)
@@ -52,142 +67,10 @@ export default function SiteDrawer({
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // Sync edit input value when selected site changes
-  useEffect(() => {
-    if (site) {
-      setEditWikidataVal(site.wikidata || '')
-    }
-    setIsEditingWikidata(false)
-  }, [site])
-
-  const handleSaveWikidata = async () => {
-    if (!site) return
-
-    let cleanVal = editWikidataVal.trim()
-    if (cleanVal) {
-      if (!cleanVal.toUpperCase().startsWith('Q') || !/^\d+$/.test(cleanVal.slice(1))) {
-        if (onToast) {
-          onToast('Invalid Wikidata ID. Must start with Q followed by numbers.', 'error')
-        } else {
-          alert('Invalid Wikidata ID. Must start with Q followed by numbers.')
-        }
-        return
-      }
-      cleanVal = cleanVal.toUpperCase()
-    } else {
-      cleanVal = null
-    }
-
-    setUpdatingWikidata(true)
-    try {
-      await backendApi.updateSiteWikidata(site.id, cleanVal)
-      if (onToast) {
-        onToast('Wikidata ID updated successfully!', 'success')
-      }
-      setIsEditingWikidata(false)
-
-      if (onRefreshDetails) {
-        onRefreshDetails({
-          ...site,
-          wikidata: cleanVal,
-          englishName: null,
-          englishDescription: null
-        })
-      }
-    } catch (err) {
-      console.error(err)
-      if (onToast) {
-        onToast(err.message || 'Failed to update Wikidata ID', 'error')
-      }
-    } finally {
-      setUpdatingWikidata(false)
-    }
-  }
-
-  /** @type {string} Unit selection: 'km' (kilometers) or 'mi' (miles). */
-  const [distanceUnit, setDistanceUnit] = useState(() => {
-    return localStorage.getItem('app-distance-unit') || 'km'
-  })
-
-  // Sync distanceUnit state when user metadata is loaded
-  useEffect(() => {
-    if (user?.user_metadata?.distance_unit) {
-      setDistanceUnit(user.user_metadata.distance_unit)
-    }
-  }, [user])
-
-  const handleDistanceUnitChange = async (newUnit) => {
-    setDistanceUnit(newUnit)
-    localStorage.setItem('app-distance-unit', newUnit)
-    if (user) {
-      try {
-        await supabase.auth.updateUser({
-          data: {
-            distance_unit: newUnit
-          }
-        })
-      } catch (err) {
-        console.error('Failed to sync distance unit to Supabase:', err)
-      }
-    }
-  }
-
-  /**
-   * @type {Object|null} Resolved driving/air distance details.
-   * Format: { distance: number, isAir: boolean }.
-   */
-  const [distanceData, setDistanceData] = useState(null)
-
   const { activeVoyage, addSiteToVoyage, removeSiteFromVoyage } = useVoyage()
   const [isAdding, setIsAdding] = useState(false)
   const [isRemoving, setIsRemoving] = useState(false)
 
-  /** @type {React.MutableRefObject<AbortController|null>} Ref tracking OSRM driving distance fetch operations. */
-  const distanceAbortRef = useRef(null)
-
-  useEffect(() => {
-    if (distanceAbortRef.current) {
-      distanceAbortRef.current.abort()
-    }
-    
-    if (!isOpen) {
-      setDistanceData(null)
-      return
-    }
-
-    if (!site || !site.coordinates || !userLocation) {
-      setDistanceData(null)
-      return
-    }
-
-    const fetchDistance = async () => {
-      const controller = new AbortController()
-      distanceAbortRef.current = controller
-
-      try {
-        const [siteLat, siteLng] = site.coordinates
-        // userLocation might be an array or an object from Leaflet
-        const userLat = Array.isArray(userLocation) ? userLocation[0] : userLocation.lat
-        const userLng = Array.isArray(userLocation) ? userLocation[1] : userLocation.lng
-        
-        const data = await getRoadDistance(userLat, userLng, siteLat, siteLng, controller.signal)
-        setDistanceData(data)
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          console.error('Distance calculation failed:', err)
-          setDistanceData(null)
-        }
-      }
-    }
-
-    fetchDistance()
-
-    return () => {
-      if (distanceAbortRef.current) {
-        distanceAbortRef.current.abort()
-      }
-    }
-  }, [site, userLocation, isOpen])
 
 
 
@@ -430,7 +313,7 @@ export default function SiteDrawer({
                 )}
                 
                 {distanceData && (
-                  <div className={styles.drawerDistanceWrapper} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', padding: '6px 8px', backgroundColor: 'var(--bg)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                  <div className={styles.drawerDistanceWrapper} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginTop: '6px', padding: '6px 8px', backgroundColor: 'var(--bg)', borderRadius: '6px', border: '1px solid var(--border)' }}>
                     <span style={{ fontSize: '0.9em', fontWeight: '500' }} title={distanceData.isAir ? "Straight-line air distance" : "Driving distance by roads"}>
                       {distanceData.isAir ? '✈️' : '🚗'} {formatDistance(distanceData.distance, distanceUnit)}
                       {distanceData.isAir && <span style={{ opacity: 0.6, fontSize: '0.85em', marginLeft: '4px', fontWeight: 'normal' }}>(air distance)</span>}
@@ -451,6 +334,55 @@ export default function SiteDrawer({
           <div className={styles.drawerDivider}></div>
 
           <div className={styles.actionButtonsRow}>
+            {/* Full-Width Dedicated Navigation Bar */}
+            {site && (site.coordinates || site.geometry?.coordinates) && (
+              <div className={styles.navigationRow}>
+                <button
+                  className={styles.navBtnPrimary}
+                  onClick={() => onStartNavigation && onStartNavigation(site)}
+                  title="Start In-App Live Navigation"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ transform: 'rotate(45deg)' }}>
+                    <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71L12 2z"/>
+                  </svg>
+                  <span>Directions</span>
+                </button>
+
+                <a
+                  href={getExternalNavLinks(
+                    site.coordinates ? site.coordinates[0] : site.geometry.coordinates[1],
+                    site.coordinates ? site.coordinates[1] : site.geometry.coordinates[0],
+                    userLocation ? (Array.isArray(userLocation) ? userLocation[0] : userLocation.lat) : null,
+                    userLocation ? (Array.isArray(userLocation) ? userLocation[1] : userLocation.lng) : null
+                  ).waze}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.navBtnWaze}
+                  title="Open in Waze App"
+                >
+                  <span className={styles.wazeDot}></span>
+                  <span>Waze</span>
+                </a>
+
+                <a
+                  href={getExternalNavLinks(
+                    site.coordinates ? site.coordinates[0] : site.geometry.coordinates[1],
+                    site.coordinates ? site.coordinates[1] : site.geometry.coordinates[0],
+                    userLocation ? (Array.isArray(userLocation) ? userLocation[0] : userLocation.lat) : null,
+                    userLocation ? (Array.isArray(userLocation) ? userLocation[1] : userLocation.lng) : null
+                  ).googleMaps}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.navBtnGoogle}
+                  title="Open in Google Maps App"
+                >
+                  <span className={styles.googleDot}></span>
+                  <span>Google Maps</span>
+                </a>
+              </div>
+            )}
+
+            <div className={styles.secondaryActionsRow}>
             {(() => {
               const wikiUrl = languageMode === 'en' 
                 ? (site.wikiUrlEn || site.wikiUrlLocal) 
@@ -539,6 +471,7 @@ export default function SiteDrawer({
                 </button>
               )
             })()}
+            </div>
           </div>
 
           <h3 className={styles.sectionTitle}>Overview</h3>
@@ -549,9 +482,6 @@ export default function SiteDrawer({
                   ? 'No English description available for this historical site. You can explore more about it on Wikidata or search for its historical context in the region.'
                   : 'אין תיאור זמין או non è disponibile alcuna descrizione per questo sito storico.'
               )
-              const limit = site.imageUrl ? 60 : 140
-              const isDescriptionLong = activeDescription.length > limit
-
               return <p>{activeDescription}</p>
             })()}
           </div>

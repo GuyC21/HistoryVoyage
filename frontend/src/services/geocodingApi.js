@@ -2,7 +2,6 @@
  * Service to interact with the Nominatim OpenStreetMap Geocoding API.
  */
 
-const NOMINATIM_BASE_URL = 'https://nominatim.openstreetmap.org';
 
 /**
  * Searches for cities matching the given query using Nominatim API.

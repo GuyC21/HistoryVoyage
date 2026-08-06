@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { searchCities } from '../../services/geocodingApi'
 import styles from './SearchBar.module.css'
-import { searchCities } from '../../services/nominatim'
-
 /**
  * SearchBar Component
  * Renders an autocomplete search bar for historical sites.

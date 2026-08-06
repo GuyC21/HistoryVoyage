@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '~/context/AuthContext'
 import { useVoyage } from '~/context/VoyageContext'
 import { backendApi } from '~/services/api'
-import { searchCities } from '~/services/nominatim'
+import { searchCities } from '~/services/geocodingApi'
 import styles from './Dashboard.module.css'
 
 export default function Dashboard() {
