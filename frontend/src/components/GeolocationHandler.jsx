@@ -91,17 +91,30 @@ const GeolocationHandler = forwardRef(({ mapInstance, onToast, onLocationFound }
       }
     )
 
+    let hasAbsolute = false
+
     // Fallback/enhancement: listen to device orientation (compass) for stationary heading
     const handleOrientation = (event) => {
       let heading = null
       if (event.webkitCompassHeading !== undefined && event.webkitCompassHeading !== null) {
-        // iOS devices
+        // iOS provides a pre-calibrated absolute compass heading out-of-the-box
         heading = event.webkitCompassHeading
-      } else if (event.absolute && event.alpha !== null) {
-        // Android and standard absolute alpha
+      } else if (event.absolute === true && event.alpha !== null) {
+        // Android absolute hardware compass
+        hasAbsolute = true
+        heading = 360 - event.alpha
+      } else if (!hasAbsolute && event.alpha !== null) {
+        // Fallback for PC emulators that send relative data
         heading = 360 - event.alpha
       }
-      if (heading !== null) {
+
+      // Adjust for screen orientation so the cone points relative to the top of the viewport
+      if (heading !== null && !isNaN(heading)) {
+        const screenOrientation = (window.screen.orientation || {}).angle || 0
+        heading = (heading + screenOrientation) % 360
+      }
+
+      if (heading !== null && !isNaN(heading)) {
         document.documentElement.style.setProperty('--user-heading', `${heading}deg`)
         document.documentElement.style.setProperty('--user-cone-display', 'block')
       }
