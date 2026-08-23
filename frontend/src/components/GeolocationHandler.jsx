@@ -139,6 +139,16 @@ const GeolocationHandler = forwardRef(({ mapInstance, onToast, onLocationFound }
   // Expose location triggers to parent refs
   useImperativeHandle(ref, () => ({
     locate: () => {
+      // iOS 13+ requires explicit user gesture to request compass permission
+      if (typeof window.DeviceOrientationEvent !== 'undefined' && typeof window.DeviceOrientationEvent.requestPermission === 'function') {
+        window.DeviceOrientationEvent.requestPermission()
+          .then((state) => {
+            if (state === 'granted') {
+              console.log('Compass permission granted.')
+            }
+          })
+          .catch(console.error)
+      }
       if (lastLocationRef.current && mapInstance) {
         mapInstance.flyTo(lastLocationRef.current, 15) // Zoom in closely when explicitly clicking locate
         onToast("Locating you...")
