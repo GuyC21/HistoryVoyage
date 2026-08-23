@@ -53,6 +53,12 @@ const GeolocationHandler = forwardRef(({ mapInstance, onToast, onLocationFound }
         if (supported) {
           const loc = [latitude, longitude]
           lastLocationRef.current = loc
+          
+          if (position.coords.heading !== null && !isNaN(position.coords.heading)) {
+            document.documentElement.style.setProperty('--user-heading', `${position.coords.heading}deg`)
+            document.documentElement.style.setProperty('--user-cone-display', 'block')
+          }
+
           onLocationFound(loc)
           
           // Fly to the user only on their very first location resolution
@@ -85,9 +91,34 @@ const GeolocationHandler = forwardRef(({ mapInstance, onToast, onLocationFound }
       }
     )
 
+    // Fallback/enhancement: listen to device orientation (compass) for stationary heading
+    const handleOrientation = (event) => {
+      let heading = null
+      if (event.webkitCompassHeading !== undefined && event.webkitCompassHeading !== null) {
+        // iOS devices
+        heading = event.webkitCompassHeading
+      } else if (event.absolute && event.alpha !== null) {
+        // Android and standard absolute alpha
+        heading = 360 - event.alpha
+      }
+      if (heading !== null) {
+        document.documentElement.style.setProperty('--user-heading', `${heading}deg`)
+        document.documentElement.style.setProperty('--user-cone-display', 'block')
+      }
+    }
+
+    if (window.DeviceOrientationEvent) {
+      window.addEventListener('deviceorientationabsolute', handleOrientation)
+      window.addEventListener('deviceorientation', handleOrientation)
+    }
+
     return () => {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current)
+      }
+      if (window.DeviceOrientationEvent) {
+        window.removeEventListener('deviceorientationabsolute', handleOrientation)
+        window.removeEventListener('deviceorientation', handleOrientation)
       }
     }
   }, [mapInstance, onToast, onLocationFound])

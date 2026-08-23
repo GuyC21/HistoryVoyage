@@ -21,6 +21,7 @@ import { supabase } from '~/services/supabase'
 // Custom pulsing blue icon for user location pin
 const userLocationIcon = L.divIcon({
   html: `<div class="user-location-ping">
+           <div class="direction-cone"></div>
            <div class="ping-circle"></div>
            <div class="core-dot"></div>
          </div>`,

@@ -286,6 +286,21 @@ html, body, #root {
   align-items: center;
 }
 
+.direction-cone {
+  position: absolute;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: conic-gradient(from 315deg at 50% 50%, transparent 0deg, rgba(59, 130, 246, 0.6) 45deg, transparent 90deg, transparent 100%);
+  mask-image: radial-gradient(circle at 50% 50%, black 20%, transparent 60%);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, black 20%, transparent 60%);
+  z-index: 0;
+  transition: transform 0.2s ease-out;
+  transform-origin: center center;
+  transform: rotate(var(--user-heading, 0deg));
+  display: var(--user-cone-display, none);
+}
+
 .core-dot {
   width: 10px;
   height: 10px;
