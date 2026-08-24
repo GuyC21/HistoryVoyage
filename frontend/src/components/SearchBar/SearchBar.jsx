@@ -254,6 +254,11 @@ export default function SearchBar({ onSelectSite }) {
           ) : (
             <li className={styles.searchNoSuggestions}>No sites found</li>
           )}
+          {suggestions.length > 0 && (
+            <li style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'center', padding: '8px 12px', borderTop: '1px solid var(--border)' }}>
+              Geocoding data by <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-muted)' }}>Open-Meteo.com</a>
+            </li>
+          )}
         </ul>
       )}
     </div>

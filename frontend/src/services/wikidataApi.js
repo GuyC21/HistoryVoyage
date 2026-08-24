@@ -16,7 +16,12 @@ export const wikidataApi = {
     try {
       const res = await fetch(
         `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${wikidataId}&props=labels|descriptions|claims|sitelinks&languages=en&format=json&origin=*`,
-        { signal: abortController?.signal }
+        { 
+          signal: abortController?.signal,
+          headers: {
+            'Api-User-Agent': 'HistoryVoyageApp/1.0 (e4guycohen@outlook.com)'
+          }
+        }
       )
       if (!res.ok) throw new Error('Wikidata fetch failed')
       const data = await res.json()
