@@ -69,7 +69,7 @@ def resolve_site_address(site: HistoricalSite) -> HistoricalSite:
 
     try:
         # Provide a short timeout to prevent slow API requests from hanging the frontend.
-        geolocator = Photon(user_agent="history_voyage_app_v1", timeout=3)
+        geolocator = Photon(user_agent="history_voyage_app_v1 (e4guycohen@outlook.com)", timeout=3)
         lat, lon = site.location.y, site.location.x
         location = geolocator.reverse((lat, lon), exactly_one=True, language='en')
         

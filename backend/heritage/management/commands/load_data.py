@@ -159,7 +159,7 @@ class Command(BaseCommand):
                 for attempt in range(1, max_retries + 1):
                     # Rotate between endpoints on retry
                     endpoint = overpass_endpoints[(attempt - 1) % len(overpass_endpoints)]
-                    req = urllib.request.Request(endpoint, data=data, headers={'User-Agent': 'GeospatialHeritagePlanner/1.0'})
+                    req = urllib.request.Request(endpoint, data=data, headers={'User-Agent': 'GeospatialHeritagePlanner/1.0 (e4guycohen@outlook.com)'})
                     
                     try:
                         self.stdout.write(f"Fetching data from Overpass API for {country.name} (Attempt {attempt}/{max_retries} via {endpoint})...")
