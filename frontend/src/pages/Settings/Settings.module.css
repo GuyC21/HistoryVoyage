@@ -296,8 +296,64 @@
     -webkit-backdrop-filter: blur(24px);
     border: 1px solid var(--border);
     border-radius: 16px;
-    padding: 24px;
     box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+  
+  .accordionHeader {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  .accordionTitle {
+    font-family: 'Outfit', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-h);
+  }
+  
+  .accordionIcon {
+    width: 20px;
+    height: 20px;
+    color: var(--text-muted);
+    transition: transform 0.4 cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .mobileSectionCard.expanded .accordionIcon {
+    transform: rotate(180deg);
+  }
+  
+  .accordionContent {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .mobileSectionCard.expanded .accordionContent {
+    grid-template-rows: 1fr;
+  }
+  
+  .accordionContentInner {
+    overflow: hidden;
+    padding: 0 24px; /* Padding on sides, top/bottom handled by inner content to prevent layout jumps */
+  }
+  
+  /* Hide the duplicated title inside the tab content on mobile */
+  .accordionContentInner .tabTitle {
+    display: none;
+  }
+  
+  /* Add some bottom padding to the inner content so it looks balanced when expanded */
+  .accordionContentInner > div {
+    padding-bottom: 24px;
   }
   
   .formInput {

@@ -4,6 +4,7 @@ import styles from './Settings.module.css';
 import ProfileTab from './components/ProfileTab';
 import SecurityTab from './components/SecurityTab';
 import PreferencesTab from './components/PreferencesTab';
+import CreditsTab from './components/CreditsTab';
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('profile');
@@ -16,6 +17,8 @@ export default function Settings() {
         return <SecurityTab />;
       case 'preferences':
         return <PreferencesTab />;
+      case 'credits':
+        return <CreditsTab />;
       default:
         return <ProfileTab />;
     }
@@ -61,6 +64,18 @@ export default function Settings() {
             Preferences
           </button>
 
+          <button 
+            className={`${styles.tabButton} ${activeTab === 'credits' ? styles.active : ''}`}
+            onClick={() => setActiveTab('credits')}
+          >
+            <svg className={styles.tabIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            About & Credits
+          </button>
+
           <Link to="/dashboard" className={styles.backButton}>
             <svg className={styles.tabIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="19" y1="12" x2="5" y2="12"></line>
@@ -89,16 +104,60 @@ export default function Settings() {
         </div>
 
         <div className={styles.mobileSectionsList}>
-          <div className={styles.mobileSectionCard}>
-            <ProfileTab />
+          <div className={`${styles.mobileSectionCard} ${activeTab === 'profile' ? styles.expanded : ''}`}>
+            <button className={styles.accordionHeader} onClick={() => setActiveTab(activeTab === 'profile' ? null : 'profile')}>
+              <span className={styles.accordionTitle}>Profile</span>
+              <svg className={styles.accordionIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            <div className={styles.accordionContent}>
+              <div className={styles.accordionContentInner}>
+                <ProfileTab />
+              </div>
+            </div>
           </div>
           
-          <div className={styles.mobileSectionCard}>
-            <SecurityTab />
+          <div className={`${styles.mobileSectionCard} ${activeTab === 'security' ? styles.expanded : ''}`}>
+            <button className={styles.accordionHeader} onClick={() => setActiveTab(activeTab === 'security' ? null : 'security')}>
+              <span className={styles.accordionTitle}>Security</span>
+              <svg className={styles.accordionIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            <div className={styles.accordionContent}>
+              <div className={styles.accordionContentInner}>
+                <SecurityTab />
+              </div>
+            </div>
           </div>
           
-          <div className={styles.mobileSectionCard}>
-            <PreferencesTab />
+          <div className={`${styles.mobileSectionCard} ${activeTab === 'preferences' ? styles.expanded : ''}`}>
+            <button className={styles.accordionHeader} onClick={() => setActiveTab(activeTab === 'preferences' ? null : 'preferences')}>
+              <span className={styles.accordionTitle}>Preferences</span>
+              <svg className={styles.accordionIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            <div className={styles.accordionContent}>
+              <div className={styles.accordionContentInner}>
+                <PreferencesTab />
+              </div>
+            </div>
+          </div>
+          
+          <div className={`${styles.mobileSectionCard} ${activeTab === 'credits' ? styles.expanded : ''}`}>
+            <button className={styles.accordionHeader} onClick={() => setActiveTab(activeTab === 'credits' ? null : 'credits')}>
+              <span className={styles.accordionTitle}>About & Credits</span>
+              <svg className={styles.accordionIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            <div className={styles.accordionContent}>
+              <div className={styles.accordionContentInner}>
+                <CreditsTab />
+              </div>
+            </div>
           </div>
         </div>
       </div>

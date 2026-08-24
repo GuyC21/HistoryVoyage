@@ -178,14 +178,19 @@ export default function SiteDrawer({
       ) : site ? (
         <div className={styles.drawerScrollContainer}>
           {site.imageUrl && (
-            <div className={styles.drawerImageContainer}>
-              <img 
-                src={site.imageUrl} 
-                alt={displayName} 
-                className={styles.drawerImage}
-                loading="lazy"
-              />
-            </div>
+            <>
+              <div className={styles.drawerImageContainer}>
+                <img 
+                  src={site.imageUrl} 
+                  alt={displayName} 
+                  className={styles.drawerImage}
+                  loading="lazy"
+                />
+              </div>
+              <div className={styles.imageCreditText}>
+                Image: <a href={site.imageUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-muted)' }}>Wikimedia Commons</a>
+              </div>
+            </>
           )}
           <div className={styles.drawerTopActions}>
             <span className={styles.drawerTag}>
@@ -482,7 +487,20 @@ export default function SiteDrawer({
                   ? 'No English description available for this historical site. You can explore more about it on Wikidata or search for its historical context in the region.'
                   : 'אין תיאור זמין או non è disponibile alcuna descrizione per questo sito storico.'
               )
-              return <p>{activeDescription}</p>
+              const wikiUrl = languageMode === 'en' 
+                ? (site.wikiUrlEn || site.wikiUrlLocal) 
+                : (site.wikiUrlLocal || site.wikiUrlEn)
+                
+              return (
+                <>
+                  <p>{activeDescription}</p>
+                  {wikiUrl && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px', lineHeight: '1.4' }}>
+                      Text is available under the <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-muted)' }}>CC BY-SA 4.0 License</a>. Source: <a href={wikiUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-muted)' }}>Wikipedia</a>.
+                    </div>
+                  )}
+                </>
+              )
             })()}
           </div>
           </div>
