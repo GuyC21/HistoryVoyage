@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '~/context/AuthContext';
 import { useTheme } from '~/hooks/useTheme';
-import heroBgDark from '~/assets/hero_bg.png';
-import heroBgLight from '~/assets/hero_bg_light.png';
+import heroBgDark from '~/assets/hero_bg.webp';
+import heroBgLight from '~/assets/hero_bg_light.webp';
 import styles from './Layout.module.css';
 
 /**
