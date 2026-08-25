@@ -49,7 +49,7 @@
   --text: #6b7280;
   --text-h: #111827;
   --bg: #ffffff;
-  --bg-translucent: rgba(255, 255, 255, 0.4); /* Much glassier */
+  --bg-translucent: rgba(255, 255, 255, 0.65); /* Much glassier */
   --border: rgba(255, 255, 255, 0.5); /* Crisp white border */
   --input-bg: #f8fafc;
   --input-border: #cbd5e1;
