@@ -41,7 +41,7 @@ export const wikidataApi = {
   getImageUrlFromEntity: (entity) => {
     if (entity?.claims?.P18?.[0]?.mainsnak?.datavalue?.value) {
       const imageName = entity.claims.P18[0].mainsnak.datavalue.value
-      return `https://commons.wikimedia.org/w/index.php?title=Special:FilePath/${encodeURIComponent(imageName)}&width=600`
+      return `https://commons.wikimedia.org/w/index.php?title=Special:FilePath/${encodeURIComponent(imageName)}&width=400`
     }
     return null
   }

@@ -184,7 +184,6 @@ export default function SiteDrawer({
                   src={site.imageUrl} 
                   alt={displayName} 
                   className={styles.drawerImage}
-                  loading="lazy"
                 />
               </div>
               <div className={styles.imageCreditText}>
