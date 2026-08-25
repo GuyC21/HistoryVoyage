@@ -9,24 +9,25 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'prompt',
-      includeAssets: ['favicon.png', 'icons.svg'],
+      includeAssets: ['favicon.png', 'pwa-icon.svg'],
       manifest: {
         name: 'History Voyage',
         short_name: 'History Voyage',
+        start_url: '/',
         description: 'Explore historical sites worldwide.',
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',
         icons: [
           {
-            src: 'favicon.png',
+            src: 'pwa-icon.svg',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/svg+xml'
           },
           {
-            src: 'favicon.png',
+            src: 'pwa-icon.svg',
             sizes: '512x512',
-            type: 'image/png',
+            type: 'image/svg+xml',
             purpose: 'any maskable'
           }
         ]
