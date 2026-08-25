@@ -38,14 +38,14 @@ def translate_site_details(site: HistoricalSite) -> HistoricalSite:
         
         # Translate name
         translated_name = GoogleTranslator(source='auto', target='en').translate(site.name)
-        if translated_name:
+        if translated_name and "Error 500" not in translated_name:
             site.english_name = translated_name
             updated_fields.append('english_name')
         
         # Translate description if present
         if site.description:
             translated_desc = GoogleTranslator(source='auto', target='en').translate(site.description)
-            if translated_desc:
+            if translated_desc and "Error 500" not in translated_desc:
                 site.english_description = translated_desc
                 updated_fields.append('english_description')
                 
