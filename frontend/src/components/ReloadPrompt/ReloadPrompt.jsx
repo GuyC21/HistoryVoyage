@@ -16,11 +16,12 @@ function ReloadPrompt() {
   })
 
   const close = () => {
-    setOfflineReady(false)
     setNeedRefresh(false)
   }
 
-  if (!offlineReady && !needRefresh) return null
+  // Only show the prompt if there is an ACTUAL update available.
+  // We ignore 'offlineReady' because showing a banner for that is annoying.
+  if (!needRefresh) return null
 
   return (
     <div style={{
@@ -41,14 +42,11 @@ function ReloadPrompt() {
       gap: '12px'
     }}>
       <div>
-        {offlineReady
-          ? <span>App ready to work offline</span>
-          : <span>New update available! Refresh to get the latest features.</span>}
+        <span>New update available! Refresh to get the latest features.</span>
       </div>
       <div style={{ display: 'flex', gap: '8px' }}>
-        {needRefresh && (
-          <button 
-            onClick={() => updateServiceWorker(true)}
+        <button 
+          onClick={() => updateServiceWorker(true)}
             style={{
               padding: '6px 12px',
               backgroundColor: 'var(--accent)',
@@ -60,7 +58,6 @@ function ReloadPrompt() {
           >
             Reload
           </button>
-        )}
         <button 
           onClick={close}
           style={{
