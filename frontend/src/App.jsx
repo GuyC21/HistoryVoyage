@@ -4,6 +4,7 @@ import { AuthProvider } from '~/context/AuthContext'
 import { VoyageProvider } from '~/context/VoyageContext'
 import Layout from '~/components/Layout'
 import ProtectedRoute from '~/components/ProtectedRoute'
+import ReloadPrompt from '~/components/ReloadPrompt/ReloadPrompt'
 
 // Lazy load page components
 const Home = lazy(() => import('~/pages/Home'))
@@ -51,6 +52,7 @@ function App() {
               <Route path="/signup" element={<Signup />} />
             </Routes>
           </Suspense>
+          <ReloadPrompt />
         </BrowserRouter>
       </VoyageProvider>
     </AuthProvider>

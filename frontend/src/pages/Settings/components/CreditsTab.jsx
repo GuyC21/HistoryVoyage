@@ -61,6 +61,7 @@ export default function CreditsTab() {
           <li>PostgreSQL & PostGIS</li>
           <li>Supabase</li>
           <li>Geopy & deep-translator</li>
+          <li>Vite PWA & Workbox</li>
         </ul>
       </div>
     </div>
