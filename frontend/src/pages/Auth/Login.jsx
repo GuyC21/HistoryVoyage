@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '~/context/AuthContext'
 import { useTheme } from '~/hooks/useTheme'
 import heroBgDark from '~/assets/hero_bg.webp'
@@ -23,8 +23,18 @@ export default function Login() {
   const { signIn } = useAuth()
   const { isDarkMode } = useTheme()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const heroBg = isDarkMode ? heroBgDark : heroBgLight
+
+  useEffect(() => {
+    if (sessionStorage.getItem('logoutReason') === 'idle') {
+      setError('You have been logged out due to inactivity.')
+      sessionStorage.removeItem('logoutReason')
+    } else if (location.state?.message) {
+      setError(location.state.message)
+    }
+  }, [location.state])
 
   const handleSubmit = async (e) => {
     e.preventDefault()

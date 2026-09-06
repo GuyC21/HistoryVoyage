@@ -1,6 +1,7 @@
 import React from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '~/context/AuthContext'
+import { useIdleTimeout } from '~/hooks/useIdleTimeout'
 import heroBg from '~/assets/hero_bg.webp'
 
 /**
@@ -13,7 +14,21 @@ import heroBg from '~/assets/hero_bg.webp'
  * @returns {JSX.Element} The rendered route or redirect.
  */
 export default function ProtectedRoute() {
-  const { user, loading } = useAuth()
+  const { user, loading, signOut } = useAuth()
+  
+  const handleIdle = async () => {
+    if (user) {
+      sessionStorage.setItem('logoutReason', 'idle')
+      try {
+        await signOut() // Wait for Supabase to clear tokens and let React Router naturally redirect
+      } catch (err) {
+        console.error("Logout failed:", err)
+      }
+    }
+  }
+
+  // 15 minutes idle timeout
+  useIdleTimeout(handleIdle, 15)
 
   if (loading) {
     return (
