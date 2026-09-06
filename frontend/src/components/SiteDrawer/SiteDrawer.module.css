@@ -12,8 +12,8 @@
   width: 380px;
   z-index: 10;
   background: var(--bg-translucent);
+-webkit-backdrop-filter: blur(24px);
   backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-lg);
   border-radius: 20px;

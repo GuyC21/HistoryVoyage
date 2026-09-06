@@ -5,8 +5,8 @@
   right: 0;
   bottom: 0;
   background-color: var(--overlay-top);
+-webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   display: flex;
   justify-content: center;
   align-items: center;

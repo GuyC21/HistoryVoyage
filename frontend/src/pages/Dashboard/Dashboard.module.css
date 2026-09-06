@@ -84,8 +84,8 @@
 
 .voyageCard {
   background: var(--bg-translucent);
+-webkit-backdrop-filter: blur(24px);
   backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 24px;
@@ -206,8 +206,8 @@
   right: 0;
   bottom: 0;
   background: var(--overlay-top);
+-webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
