@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '~/services/supabase'
 import { backendApi } from '~/services/api'
+import { IDLE_TIMEOUT_MINUTES } from '~/hooks/useIdleTimeout'
 
 const AuthContext = createContext(null)
 
@@ -40,6 +41,27 @@ export function AuthProvider({ children }) {
     supabase.auth.getSession().then(async ({ data: { session: initialSession } }) => {
       if (!mounted) return
       
+      if (initialSession) {
+        // Enforce idle timeout globally across browser restarts
+        const lastIdleStr = localStorage.getItem('lastIdleActivity')
+        if (lastIdleStr) {
+          const lastIdle = parseInt(lastIdleStr, 10)
+          const timeoutMs = IDLE_TIMEOUT_MINUTES * 60 * 1000
+          if (Date.now() - lastIdle >= timeoutMs) {
+            console.log('User was idle across sessions. Logging out.')
+            localStorage.removeItem('lastIdleActivity')
+            sessionStorage.setItem('logoutReason', 'idle')
+            await supabase.auth.signOut()
+            
+            // Set state to null and finish loading
+            setSession(null)
+            setUser(null)
+            setLoading(false)
+            return
+          }
+        }
+      }
+
       setSession(initialSession)
       setUser(initialSession?.user ?? null)
       

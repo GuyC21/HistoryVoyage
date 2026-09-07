@@ -1,70 +1,54 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
+import { useIdleTimer } from 'react-idle-timer';
 import L from 'leaflet';
 
+export const IDLE_TIMEOUT_MINUTES = 15; // Change this to 10/60 for QA testing 10 seconds
 
 /**
- * Hook to handle idle timeout and automatic logout.
- * Resets the idle timer on user DOM interaction (clicks, scrolls, typing)
- * or significant GPS movement (> 10 meters).
+ * Hook to handle idle timeout and automatic logout using the industry standard react-idle-timer.
+ * Features built-in robust cross-tab sync and browser suspension handling.
+ * Also includes custom GPS polling to keep users active during navigation.
  * 
  * @param {Function} onIdle - Callback triggered when the user becomes idle.
  * @param {number} timeoutMinutes - Number of minutes of inactivity before triggering onIdle.
  */
-export function useIdleTimeout(onIdle, timeoutMinutes = 15) {
-  const lastActivity = useRef(Date.now());
-  const onIdleRef = useRef(onIdle);
-  const hasTriggered = useRef(false);
+export function useIdleTimeout(onIdle, timeoutMinutes = IDLE_TIMEOUT_MINUTES) {
   const lastLocation = useRef(null);
 
-  // Keep the latest callback without triggering re-renders
+  // 1. Core Idle Timer via Professional Package
+  // This automatically handles cross-tab BroadcastChannels, browser sleep/wake events, 
+  // and performance-optimized event listeners.
+  const { activate } = useIdleTimer({
+    onIdle: onIdle,
+    timeout: timeoutMinutes * 60 * 1000,
+    crossTab: true,
+    syncTimers: 200,
+    events: [
+      'mousemove',
+      'keydown',
+      'wheel',
+      'DOMMouseScroll',
+      'mousewheel',
+      'mousedown',
+      'touchstart',
+      'touchmove',
+      'MSPointerDown',
+      'MSPointerMove',
+      'visibilitychange'
+    ],
+    // Exclude 'scroll' because Map Explorer triggers automatic layout shifts that register as scrolling.
+    onAction: () => {
+      // Sync to localStorage so if the browser is completely closed, AuthContext knows when we were last active
+      localStorage.setItem('lastIdleActivity', Date.now().toString());
+    }
+  });
+
+  // 2. Custom Battery-friendly GPS location polling
+  // Fires every 2 minutes. If user moved more than 10 meters, we manually trigger activate()
+  // to tell the IdleTimer that the user is still active.
   useEffect(() => {
-    onIdleRef.current = onIdle;
-  }, [onIdle]);
-
-  useEffect(() => {
-    const timeoutMs = timeoutMinutes * 60 * 1000;
-    hasTriggered.current = false; // Reset trigger if timeout changes
-    lastActivity.current = Date.now(); // Reset activity on mount
-
-    // 1. Bulletproof Interval Checker
-    // Checks the physical elapsed time every 1 second.
-    // This is immune to background tab suspension, browser throttling, and event loop delays.
-    const checkIdleInterval = setInterval(() => {
-      const elapsed = Date.now() - lastActivity.current;
-      
-      if (!hasTriggered.current && elapsed >= timeoutMs) {
-        hasTriggered.current = true; // Prevent multiple triggers while logout is processing
-        if (onIdleRef.current) {
-          onIdleRef.current();
-        }
-      }
-    }, 1000);
-
-    // 2. DOM Activity Handler
-    const handleActivity = () => {
-      if (!hasTriggered.current) {
-        // CRITICAL FIX: If the tab was completely frozen by the browser (Memory Saver, iOS Safari), 
-        // the interval won't fire. When the tab wakes up, handleActivity fires first.
-        // We MUST check if they were already idle before resetting the activity timer!
-        if (Date.now() - lastActivity.current >= timeoutMs) {
-          hasTriggered.current = true;
-          if (onIdleRef.current) onIdleRef.current();
-        } else {
-          lastActivity.current = Date.now();
-        }
-      }
-    };
-
-    const WINDOW_EVENTS = ['mousemove', 'keydown', 'touchstart', 'click'];
-    WINDOW_EVENTS.forEach(event => {
-      window.addEventListener(event, handleActivity, { passive: true });
-    });
-    // visibilitychange must be attached to document to work reliably in all browsers
-    document.addEventListener('visibilitychange', handleActivity, { passive: true });
-
-    // 3. Battery-friendly GPS location polling (every 2 minutes)
     const gpsPollInterval = setInterval(() => {
-      if (navigator.geolocation && !hasTriggered.current) {
+      if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (position) => {
             const { latitude, longitude } = position.coords;
@@ -73,12 +57,8 @@ export function useIdleTimeout(onIdle, timeoutMinutes = 15) {
               const newLoc = L.latLng(latitude, longitude);
               
               if (prevLoc.distanceTo(newLoc) > 10 || position.coords.speed > 0) {
-                if (Date.now() - lastActivity.current >= timeoutMs) {
-                  hasTriggered.current = true;
-                  if (onIdleRef.current) onIdleRef.current();
-                } else {
-                  lastActivity.current = Date.now();
-                }
+                // User moved physically, keep their session alive!
+                activate();
                 lastLocation.current = { lat: latitude, lng: longitude };
               }
             } else {
@@ -97,13 +77,6 @@ export function useIdleTimeout(onIdle, timeoutMinutes = 15) {
       }
     }, 2 * 60 * 1000);
 
-    return () => {
-      clearInterval(checkIdleInterval);
-      clearInterval(gpsPollInterval);
-      WINDOW_EVENTS.forEach(event => {
-        window.removeEventListener(event, handleActivity);
-      });
-      document.removeEventListener('visibilitychange', handleActivity);
-    };
-  }, [timeoutMinutes]);
+    return () => clearInterval(gpsPollInterval);
+  }, [activate]);
 }

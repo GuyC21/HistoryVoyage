@@ -1,7 +1,7 @@
 import React from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '~/context/AuthContext'
-import { useIdleTimeout } from '~/hooks/useIdleTimeout'
+import { useIdleTimeout, IDLE_TIMEOUT_MINUTES } from '~/hooks/useIdleTimeout'
 import heroBg from '~/assets/hero_bg.webp'
 
 /**
@@ -15,22 +15,31 @@ import heroBg from '~/assets/hero_bg.webp'
  */
 export default function ProtectedRoute() {
   const { user, loading, signOut } = useAuth()
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false)
   
   const handleIdle = async () => {
     if (user) {
+      setIsLoggingOut(true)
       sessionStorage.setItem('logoutReason', 'idle')
       try {
         await signOut() // Wait for Supabase to clear tokens and let React Router naturally redirect
       } catch (err) {
         console.error("Logout failed:", err)
+        setIsLoggingOut(false)
       }
     }
   }
 
-  // 15 minutes idle timeout
-  useIdleTimeout(handleIdle, 15)
+  // Global idle timeout (uses constant from hook)
+  useIdleTimeout(handleIdle, IDLE_TIMEOUT_MINUTES)
 
-  if (loading) {
+  if (!user) {
+    return <Navigate to="/login" replace />
+  }
+
+  if (loading || isLoggingOut) {
+    const loadingText = isLoggingOut ? "Disconnecting session..." : "Loading your Voyage..."
+    
     return (
       <div style={{
         display: 'flex',
@@ -92,7 +101,7 @@ export default function ProtectedRoute() {
             color: 'rgba(255, 255, 255, 0.8)',
             fontWeight: 500
           }}>
-            Loading your Voyage...
+            {loadingText}
           </div>
         </div>
 
@@ -108,10 +117,6 @@ export default function ProtectedRoute() {
         `}} />
       </div>
     )
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />
   }
 
   return <Outlet />
