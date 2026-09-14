@@ -221,9 +221,12 @@ export default function MapView({
     return () => observer.disconnect();
   }, [])
 
+  const cartoApiKey = import.meta.env.VITE_CARTO_API_KEY || '';
+  const apiKeyParam = cartoApiKey ? `?key=${cartoApiKey}` : '';
+  
   const lightTiles = isDarkMode 
-    ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+    ? `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png${apiKeyParam}`
+    : `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png${apiKeyParam}`
   
   /** @type {string} Attribution label required for OpenStreetMap and CartoDB usage guidelines. */
   const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
